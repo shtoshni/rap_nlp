@@ -36,17 +36,23 @@ class Experiment():
         # Initialize model and training metadata
         self.finetune = args.finetune
 
-        self.model = ClozeModel(finetune=self.finetune, **kwargs)
+        self.model = ClozeModel(**kwargs)
 
         self.max_epochs = args.max_epochs
         self.max_stuck_epochs = args.max_stuck_epochs
-        self.train_info, self.optimizer, self.optim_scheduler, self.optimizer_params = {}, {}, {}, {}
+
+        self.train_info, self.optimizer, self.optim_scheduler = {}, None, None
+        # Train info is a dictionary to keep around important training variables
+        self.train_info['epoch'] = 0
+        self.train_info['val_perf'] = 0.0
+        self.train_info['global_steps'] = 0
+        self.train_info['num_stuck_epochs'] = 0
 
         self.initialize_setup(init_lr=args.init_lr)
         print_model_info(self.model)
         sys.stdout.flush()
 
-        if not eval:
+        if not args.eval:
             self.train(max_epochs=args.max_epochs, max_gradient_norm=5.0)
 
         # Finally evaluate model

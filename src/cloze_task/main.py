@@ -34,9 +34,9 @@ def main():
     parser.add_argument('-num_train_docs', default=None, type=int,
                         help='Number of training docs.')
     parser.add_argument('-max_stuck_epochs',
-                        help='Maximum number of epochs', default=5, type=int)
+                        help='Maximum number of epochs', default=1, type=int)
     parser.add_argument('-max_epochs',
-                        help='Maximum number of epochs', default=25, type=int)
+                        help='Maximum number of epochs', default=5, type=int)
     parser.add_argument('-seed', default=0,
                         help='Random seed to get different runs', type=int)
     parser.add_argument('-init_lr', help="Initial learning rate",
