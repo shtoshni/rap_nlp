@@ -3,7 +3,7 @@ import os
 from os import path
 import logging
 
-from summarization.determine_singletons import process_dataset
+from summarization.perform_coreference import process_dataset
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -19,7 +19,8 @@ def main():
     parser.add_argument('-dataset_name', default='xsum', choices=['xsum', 'cnn_dailymail'],
                         help="Dataset identifier",  type=str)
     parser.add_argument('-model_loc',
-                        default="/home/shtoshni/Research/long-doc-coref/models/umem_singleton_90K/model.pth")
+                        default="/home/shtoshni/Research/fast-coref/models/longformer_ontonotes/model.pth")
+    parser.add_argument('-source_loc', default='/home/shtoshni/Research/fast-coref/src')
     parser.add_argument('-max_docs', default=None, type=int,
                         help="Maximum number of docs to process per split")
     parser.add_argument('-split', default=None, type=str, choices=['train', 'validation', 'test'],

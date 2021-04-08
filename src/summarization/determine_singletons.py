@@ -2,13 +2,19 @@ from datasets import load_dataset
 import spacy
 from os import path
 import json
+import sys
+import logging
 from summarization.constants import DATASET_TO_ATTRIBUTES, SPACY_NER_LABELS
 from summarization.utils import entity_match
 
 
-def load_coref_model(model_loc):
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger()
+
+
+def load_coref_model(model_loc, source_loc):
     import sys
-    sys.path.append('/home/shtoshni/Research/long-doc-coref/src')
+    sys.path.append(source_loc)
 
     from inference.inference import Inference
 
@@ -18,11 +24,11 @@ def load_coref_model(model_loc):
     return model
 
 
-def process_dataset(output_dir, dataset_name, model_loc, max_docs=None, split=None,
+def process_dataset(output_dir, dataset_name, model_loc, source_loc, max_docs=None, split=None,
                     index_start=None, index_end=None, **kwargs):
     # Load spacy and coref model
     ner_model = spacy.load('en_core_web_trf')
-    coref_model = load_coref_model(model_loc)
+    coref_model = load_coref_model(model_loc, source_loc)
 
     if dataset_name == 'cnn_dailymail':
         dataset = load_dataset(dataset_name, '3.0.0')
@@ -30,7 +36,15 @@ def process_dataset(output_dir, dataset_name, model_loc, max_docs=None, split=No
         dataset = load_dataset(dataset_name)
 
     def process_split(split):
-        output_file = path.join(output_dir, f"{dataset_name}_{split}.jsonlines")
+        suffix = ''
+        if index_start is not None:
+            suffix += f'_{index_start}'
+        if index_end is not None:
+            suffix += f'_{index_end}'
+        if max_docs is not None:
+            suffix += f'_max_{max_docs}'
+        output_file = path.join(output_dir, f"{dataset_name}_{split}{suffix}.jsonlines")
+        print(output_file)
         with open(output_file, 'w') as f:
             split_data = dataset[split]
             if index_start is not None and index_end is not None:
@@ -138,7 +152,7 @@ def process_dataset(output_dir, dataset_name, model_loc, max_docs=None, split=No
 
                 if len(filtered_singletons_3):
                     coref_extra = True
-                    output_dict['coref_clusters'] = coref_output_dict['clusters']
+                    # output_dict['coref_clusters'] = coref_output_dict['clusters']
                     output_dict['coref_singletons'] = filtered_singletons_3
                     output_dict['coref_doc'] = {
                         'sentences': coref_output_dict['tokenized_doc']['sentences'],
@@ -149,7 +163,7 @@ def process_dataset(output_dir, dataset_name, model_loc, max_docs=None, split=No
                 f.write(json.dumps(output_dict) + "\n")
 
                 if (idx + 1) % 100 == 0:
-                    print(f"Processed {idx + 1} docs")
+                    logger.info(f"Processed {idx + 1} docs")
 
     if split is None:
         for split in dataset.keys():
