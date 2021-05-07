@@ -2,7 +2,7 @@ from datasets import load_dataset
 from os import path
 import json
 import logging
-from summarization.constants import DATASET_TO_ATTRIBUTES
+from summarization.data_prep.constants import DATASET_TO_ATTRIBUTES
 
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
@@ -13,7 +13,7 @@ def load_coref_model(model_loc, source_loc):
     import sys
     sys.path.append(source_loc)
 
-    from inference.inference import Inference
+    from inference.model_inference import Inference
 
     model = Inference(model_loc)
     model.model.max_span_width = 7
@@ -70,8 +70,8 @@ def process_dataset(output_dir, dataset_name, model_loc, source_loc, max_docs=No
                 output_dict['orig_idx'] = instance['id']
 
                 coref_output_dict = coref_model.perform_coreference([summary, document])
-                output_dict['sentences'] = coref_output_dict['tokenized_doc']['sentences']
-                output_dict['subtoken_idx_clusters'] = coref_output_dict['subtoken_idx_clusters']
+                output_dict['sentences'] = coref_output_dict['tokenized_doc']['sentences_indices']
+                output_dict['part_lens'] = coref_output_dict['tokenized_doc']['part_lens']
                 output_dict['coref_clusters'] = coref_output_dict['clusters']
 
                 f.write(json.dumps(output_dict) + "\n")

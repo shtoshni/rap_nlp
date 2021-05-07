@@ -3,7 +3,7 @@ import os
 from os import path
 import logging
 
-from summarization.perform_coreference import process_dataset
+from cloze_task.data_prep.perform_coreference import process_dataset
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -15,15 +15,17 @@ def main():
 
     # Add arguments to parser
     parser.add_argument(
-        '-base_output_dir', default='../data/summarization', help='Output directory', type=str)
-    parser.add_argument('-dataset_name', default='xsum', choices=['xsum', 'cnn_dailymail'],
+        '-input_dir', default='../data/lambada/raw_data', help='Output directory', type=str)
+    parser.add_argument(
+        '-output_dir', default='../data/lambada/coref_data', help='Output directory', type=str)
+    parser.add_argument('-dataset_name', default='lambada',
                         help="Dataset identifier",  type=str)
     parser.add_argument('-model_loc',
-                        default="/home/shtoshni/Research/fast-coref/models/longformer_ontonotes/model.pth")
+                        default="/home/shtoshni/Research/fast-coref/models/longformer_litbank/model.pth")
     parser.add_argument('-source_loc', default='/home/shtoshni/Research/fast-coref/src')
-    parser.add_argument('-max_docs', default=None, type=int,
+    parser.add_argument('-split', default='train', type=str, choices=['train', 'val', 'test'],
                         help="Maximum number of docs to process per split")
-    parser.add_argument('-split', default=None, type=str, choices=['train', 'validation', 'test'],
+    parser.add_argument('-max_docs', default=None, type=int,
                         help="Maximum number of docs to process per split")
     parser.add_argument('-index_start', default=None, type=int,
                         help="Starting index of doc")
@@ -33,8 +35,6 @@ def main():
     args = parser.parse_args()
 
     assert (path.exists(args.model_loc))
-
-    args.output_dir = path.join(args.base_output_dir, args.dataset_name)
     if not path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
