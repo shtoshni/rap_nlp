@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 
 from utils import stopwords
 from pytorch_lightning.core.lightning import LightningModule
-from transformers import BartForCausalLM
+from transformers import GPT2LMHeadModel
 from transformers import get_linear_schedule_with_warmup
 from pytorch_utils.optimization import get_inverse_square_root_decay
 
@@ -14,12 +14,16 @@ class ClozeModel(LightningModule):
         self.save_hyperparameters('args')
         self.__dict__.update(**vars(args))
 
-        model_name = f'facebook/bart-{args.model_size}'
-        self.model = BartForCausalLM.from_pretrained(
+        if args.model_size == 'base':
+            model_name = f'gpt2'
+        else:
+            model_name = f'gpt2-{args.model_size}'
+
+        self.model = GPT2LMHeadModel.from_pretrained(
             model_name, output_hidden_states=False,
-            # gradient_checkpointing=True,
-            is_decoder=True, is_encoder_decoder=False,
+            gradient_checkpointing=True, use_cache=False,
         )
+
         self.tokenizer = tokenizer
 
         self.num_training_steps = args.num_training_steps
@@ -61,11 +65,20 @@ class ClozeModel(LightningModule):
             return self.model(**batch, return_dict=False)[0]
         else:
             output_ids = self.model.generate(
-                input_ids=batch['input_ids'],
-                num_beams=1, max_length=batch['input_ids'].shape[1] + 5, early_stopping=True)[0]
-            suffix_ids = output_ids[batch['input_ids'].shape[1]:].tolist()[:-1]
-            print(suffix_ids, batch['output_ids'])
-            return suffix_ids, tuple(suffix_ids) == tuple(batch['output_ids'])
+                input_ids=batch['input_ids'], attention_mask=batch['attention_mask'],
+                num_beams=4, max_length=batch['input_ids'].shape[1] + 1, early_stopping=True,
+                pad_token_id=self.tokenizer.eos_token_id, eos_token_id=self.tokenizer.eos_token_id,
+            )
+            suffix_ids = output_ids[:, batch['input_ids'].shape[1]:].tolist()
+            corr = 0
+            for suffix_id, output_id in zip(suffix_ids, batch['output_ids']):
+                corr += int(suffix_id == output_id)
+            return {
+                'pred': suffix_ids,
+                'gt': batch['output_ids'],
+                'corr': corr,
+                'total': len(suffix_ids)
+            }
 
     def training_step(self, batch, batch_ids):
         """
@@ -81,17 +94,21 @@ class ClozeModel(LightningModule):
 
     def validation_step(self, batch, batch_ids, split="val"):
         output = self(batch)
-        suffix_ids, corr = output
-        return {f'{split}_corr': corr}
+        return output
+
+    def test_step(self, batch, batch_ids, split="test"):
+        output = self(batch)
+        return output
 
     def validation_epoch_end(self, outputs, split='val'):
-        with torch.no_grad():
-            val_acc = sum([batch_output[f'{split}_corr'] for batch_output in outputs])/len(outputs)
+        total_corr = sum([batch_output['corr'] for batch_output in outputs])
+        total = sum([batch_output['total'] for batch_output in outputs])
+        val_acc = total_corr/total
+        print(total_corr, total, val_acc)
         self.log(f'{split}_acc', val_acc)
         return {'val_acc': val_acc}
 
     def test_epoch_end(self, outputs):
-        return self.validation_epoch_end(outputs, split='test')
-
+        self.validation_epoch_end(outputs, split='test')
 
 

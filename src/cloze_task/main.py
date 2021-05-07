@@ -47,7 +47,7 @@ def main(args, argparser):
 
     if args.max_epochs is None:
         # Changing the default value
-        args.max_epochs = 10
+        args.max_epochs = 5
 
     args.save_dir = args.weights_save_path if args.weights_save_path is not None else args.base_model_dir
     args.model_name = get_model_name(args, parser)
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     # Add model args
     parser = ClozeModel.add_model_specific_args(parser)
     # Training args
-    # parser.add_argument('--batch_size', type=int, default=10)
+    parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--max_token_limit', type=int, default=3000)
     parser.add_argument('--patience', type=int, default=2, help='Early stopping patience')
     parser.add_argument('--init_lr', type=float, default=5e-4)

@@ -1,5 +1,5 @@
 import torch
-from transformers import GPT2TokenizerFast, BartTokenizerFast
+from transformers import GPT2TokenizerFast, LongformerTokenizerFast
 from os import path
 from pytorch_lightning.core.datamodule import LightningDataModule
 from cloze_task.data_utils.cloze_dataset import LambadaDataset
@@ -27,12 +27,24 @@ class ClozeTaskDataModule(LightningDataModule):
         if self.oracle:
             self.chain_prob = 1.00
 
-        # self.batch_size = batch_size
+        self.batch_size = batch_size
         self.max_token_limit = max_token_limit
         self.num_workers = num_workers
 
-        self.tokenizer = BartTokenizerFast.from_pretrained(f'facebook/bart-{model_size}')
+        # Original tokenizer is used by the coreference model
+        self.orig_tokenizer = LongformerTokenizerFast.from_pretrained(f'allenai/longformer-large-4096')
+        # Tokenizer used by the language model
+        self.tokenizer = GPT2TokenizerFast.from_pretrained(f'gpt2')
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        # self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
+
         if chain_prob:
+            self.orig_tokenizer.add_special_tokens({
+                'ment_start': MENT_START,
+                'ment_end': MENT_END,
+                'coref': COREF,
+            })
+
             self.tokenizer.add_special_tokens({
                 'ment_start': MENT_START,
                 'ment_end': MENT_END,
@@ -45,7 +57,7 @@ class ClozeTaskDataModule(LightningDataModule):
             tokenizer=self.tokenizer, training=False)
 
         self.dataset_dict = {}
-        for split in ["train", "val"]:
+        for split in ["train", "val", "test"]:
             self.dataset_dict[split] = self._load_dataset(split)
 
     def estimate_train_batches(self):
@@ -64,7 +76,7 @@ class ClozeTaskDataModule(LightningDataModule):
             chain_prob = (self.chain_prob if split == "train" else 0.0)
 
         return LambadaDataset(
-            tokenizer=self.tokenizer, file_path=path.join(self.data_dir, f"{split}.jsonlines"),
+            tokenizer=self.orig_tokenizer, file_path=path.join(self.data_dir, f"{split}.jsonlines"),
             max_instances=(self.train_size if split == 'train' else self.val_size),
             chain_prob=chain_prob)
 
@@ -81,16 +93,16 @@ class ClozeTaskDataModule(LightningDataModule):
 
     def val_dataloader(self):
         dev_loader = torch.utils.data.DataLoader(
-            self.dataset_dict['val'], batch_size=1, num_workers=self.num_workers,
+            self.dataset_dict['val'], batch_size=self.batch_size, num_workers=self.num_workers,
             shuffle=False, collate_fn=self.inference_data_collator,
             drop_last=False, pin_memory=True)
 
         return dev_loader
 
     def test_dataloader(self):
-        test_dataset = self._load_dataset(split="test")
         test_loader = torch.utils.data.DataLoader(
-            test_dataset, batch_size=1, num_workers=self.num_workers,
-            shuffle=False, collate_fn=self.inference_data_collator, drop_last=False)
+            self.dataset_dict['test'], batch_size=self.batch_size, num_workers=self.num_workers,
+            shuffle=False, collate_fn=self.inference_data_collator, drop_last=False,
+            pin_memory=True)
 
         return test_loader

@@ -17,9 +17,6 @@ class LambadaDataset(Dataset):
         assert os.path.isfile(file_path)
         self.chain_prob = chain_prob
         self.tokenizer = tokenizer
-        # self.special_token_to_id = {}
-        # for token in [MENT_END, MENT_START, COREF]:
-        #     self.special_token_to_id[token] = self.tokenizer.convert_tokens_to_ids(token)
 
         with open(file_path, encoding="utf-8") as f:
             self.lines = [line for line in f.read().splitlines() if (len(line) > 0 and not line.isspace())]

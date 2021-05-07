@@ -18,12 +18,14 @@ class DataCollatorForClozeGeneration:
             output_dict['labels'] = labels
             return output_dict
         else:
-            assert (len(examples) == 1)
-            tokenized_dict = self.tokenizer(examples[0]["input_ids"], padding=False, add_special_tokens=True)
+            # assert (len(examples) == 1)
+            output_dict = self.tokenizer([example["input_ids"] for example in examples],
+                                         padding=True, return_tensors="pt")
             # print(tokenized_dict)
-            output_dict = {'input_ids': torch.tensor([tokenized_dict['input_ids'][:-1]]),  # Remove BOS tag
-                           'output_ids': self.tokenizer.encode(examples[0]["output_ids"], add_special_tokens=False),
-                           'input_length': len(tokenized_dict['input_ids'][:-1])}
+            output_dict['output_ids'] = self.tokenizer([example["output_ids"] for example in examples])['input_ids']
+            output_dict['input_length'] = output_dict['input_ids'].shape[1]
+
+            # print(output_dict)
             return output_dict
 
 
