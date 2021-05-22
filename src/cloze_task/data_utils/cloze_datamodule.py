@@ -5,13 +5,14 @@ from pytorch_lightning.core.datamodule import LightningDataModule
 from cloze_task.data_utils.cloze_dataset import LambadaDataset
 from cloze_task.data_utils.datasampler import SmartBatchSampler, SmartSampler
 from cloze_task.data_utils.data_collator import DataCollatorForClozeGeneration
-from cloze_task.data_utils.constants import MENT_START, MENT_END, COREF
+from cloze_task.data_utils.constants import MENT_START, MENT_END, COREF_START, COREF_END
 
 
 class ClozeTaskDataModule(LightningDataModule):
     def __init__(self,  data_dir=None, batch_size=8, max_token_limit=1000, num_workers=1,
                  train_size=1e6, val_size=500, model_size='base',
-                 chain_prob=0.0, oracle=False,
+                 chain_prob=0.0, oracle=False,  chain_rep='canonical', coref_len=None,
+                 include_singletons=False,
                  **kwargs):
         super().__init__()
 
@@ -27,6 +28,10 @@ class ClozeTaskDataModule(LightningDataModule):
         if self.oracle:
             self.chain_prob = 1.00
 
+        self.chain_rep = chain_rep
+        self.coref_len = coref_len
+        self.include_singletons = include_singletons
+
         self.batch_size = batch_size
         self.max_token_limit = max_token_limit
         self.num_workers = num_workers
@@ -39,16 +44,12 @@ class ClozeTaskDataModule(LightningDataModule):
         # self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
 
         if chain_prob:
+            special_tokens = [MENT_START, MENT_END, COREF_START, COREF_END]
             self.orig_tokenizer.add_special_tokens({
-                'ment_start': MENT_START,
-                'ment_end': MENT_END,
-                'coref': COREF,
+                'additional_special_tokens': special_tokens,
             })
-
             self.tokenizer.add_special_tokens({
-                'ment_start': MENT_START,
-                'ment_end': MENT_END,
-                'coref': COREF,
+                'additional_special_tokens': special_tokens,
             })
 
         self.train_data_collator = DataCollatorForClozeGeneration(
@@ -78,7 +79,9 @@ class ClozeTaskDataModule(LightningDataModule):
         return LambadaDataset(
             tokenizer=self.orig_tokenizer, file_path=path.join(self.data_dir, f"{split}.jsonlines"),
             max_instances=(self.train_size if split == 'train' else self.val_size),
-            chain_prob=chain_prob)
+            chain_prob=chain_prob, chain_rep=self.chain_rep, coref_len=self.coref_len,
+            include_singletons=self.include_singletons,
+        )
 
     def train_dataloader(self):
         batch_sampler = SmartBatchSampler(

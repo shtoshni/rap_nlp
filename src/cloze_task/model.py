@@ -24,6 +24,9 @@ class ClozeModel(LightningModule):
             gradient_checkpointing=True, use_cache=False,
         )
 
+        # print(self.model.config)
+        # print(self.model.config.vocab_size)
+
         self.tokenizer = tokenizer
 
         self.num_training_steps = args.num_training_steps
@@ -31,15 +34,25 @@ class ClozeModel(LightningModule):
         if self.chain_prob:
             self.model.resize_token_embeddings(len(self.tokenizer))
 
+        self.token_mask = (torch.arange(self.model.config.vocab_size) >= 50257).float()
+        print(self.token_mask)
+
     @staticmethod
     def add_model_specific_args(parent_parser):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
 
         parser.add_argument('--model_size', default='base', type=str,
-                            choices=['base', 'large'],
+                            choices=['base', 'medium', 'large'],
                             help='BART model size.')
         # Chain probability
         parser.add_argument('--chain_prob', type=float, default=0.0)
+        # Chain representation
+        parser.add_argument('--chain_rep', type=str, default='canonical', choices=['canonical', 'antecedent'])
+        # Coref length
+        parser.add_argument('--coref_len', type=int, default=None, help="Max length of coref mention.")
+        # Include singletons
+        parser.add_argument('--include_singletons', default=False, action="store_true",
+                            help="Whether to represent singletons in text or not.")
         # (1) Oracle
         parser.add_argument('--oracle', default=False, action="store_true")
 
@@ -64,15 +77,25 @@ class ClozeModel(LightningModule):
         if self.training:
             return self.model(**batch, return_dict=False)[0]
         else:
-            output_ids = self.model.generate(
-                input_ids=batch['input_ids'], attention_mask=batch['attention_mask'],
-                num_beams=4, max_length=batch['input_ids'].shape[1] + 1, early_stopping=True,
-                pad_token_id=self.tokenizer.eos_token_id, eos_token_id=self.tokenizer.eos_token_id,
-            )
-            suffix_ids = output_ids[:, batch['input_ids'].shape[1]:].tolist()
+            # output_ids = self.model.generate(
+            #     input_ids=batch['input_ids'],
+            #     num_beams=4, max_length=batch['input_ids'].shape[1] + 1, early_stopping=True,
+            #     pad_token_id=self.tokenizer.eos_token_id, eos_token_id=self.tokenizer.eos_token_id,
+            # )
+
+            logits = self.model(input_ids=batch['input_ids']).logits
+            self.token_mask = self.token_mask.to(device=logits.device)
+            # print(logits)
+            # print(logits.shape)
+
+            last_token_logit = logits[0, -1, :] * (1 - self.token_mask) + self.token_mask * (-1e10)
+            suffix_ids = [[torch.argmax(last_token_logit, dim=0).item()]]
+
+            # suffix_ids = output_ids[:, batch['input_ids'].shape[1]:].tolist()
             corr = 0
             for suffix_id, output_id in zip(suffix_ids, batch['output_ids']):
-                corr += int(suffix_id == output_id)
+                # print(suffix_id, output_id[:1])
+                corr += int(suffix_id == output_id[:1])
             return {
                 'pred': suffix_ids,
                 'gt': batch['output_ids'],

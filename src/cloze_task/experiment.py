@@ -23,7 +23,7 @@ def experiment(args):
         name=None,
     )
     # WandB logger
-    # logger = WandbLogger(name=args.model_name, id=args.model_name, project='rap_nlp', save_dir=args.save_dir)
+    # logger = WandbLogger(name=args.model_name, id=args.model_name, project='lambada_nlp', save_dir=args.save_dir)
 
     # Callbacks
     lr_logger = LearningRateMonitor()
@@ -55,12 +55,12 @@ def experiment(args):
 
     one_epoch_batches = datamodule.estimate_train_batches()
     effective_batch_size = int(math.ceil(args.train_size / one_epoch_batches))
-    # args.accumulate_grad_batches = int(math.ceil(args.real_batch_size / effective_batch_size))
-    args.num_training_steps = one_epoch_batches * args.max_epochs  #/ args.accumulate_grad_batches
+    args.accumulate_grad_batches = int(math.ceil(args.real_batch_size / effective_batch_size))
+    args.num_training_steps = one_epoch_batches * args.max_epochs / args.accumulate_grad_batches
 
     print(f"One epoch batches: {one_epoch_batches}, Amortized batch size: {effective_batch_size}")
-    # print("Acc. grad steps: %d, Number of training steps: %d" %
-    #       (args.accumulate_grad_batches, args.num_training_steps))
+    print("Acc. grad steps: %d, Number of training steps: %d" %
+          (args.accumulate_grad_batches, args.num_training_steps))
 
     to_train = True
     last_checkpoint = path.join(checkpoint_callback.dirpath, "cloze-last.ckpt")
@@ -122,3 +122,12 @@ def experiment(args):
     perf_file = path.join(args.model_dirpath, "perf.json")
     with open(perf_file, 'w') as f:
         f.write(json.dumps(test_perf))
+
+    if args.slurm_id is not None:
+        slurm_perf_dir = path.join(args.save_dir, 'perf')
+        slurm_perf_file = path.join(slurm_perf_dir, f'{args.slurm_id}.json')
+        with open(slurm_perf_file, 'w') as f:
+            f.write(json.dumps(test_perf))
+
+
+

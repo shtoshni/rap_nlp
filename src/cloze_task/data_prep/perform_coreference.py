@@ -68,7 +68,7 @@ def process_dataset(input_dir, output_dir, dataset_name, model_loc, source_loc, 
             story, continuation = instance
             output_dict = {'idx': idx}
             coref_output_dict = coref_model.perform_coreference(story)
-            output_dict['input'] = flatten(coref_output_dict['tokenized_doc']['sentences_indices'])
+            output_dict['input'] = flatten(coref_output_dict['tokenized_doc']['sentences'])
             output_dict['output'] = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(continuation))
             output_dict['coref_clusters'] = coref_output_dict['clusters']
 
