@@ -75,8 +75,8 @@ if __name__ == '__main__':
     parser.add_argument('--lr_decay', default="square_root", type=str, choices=["linear", "square_root"])
     parser.add_argument('--num_workers', type=int, default=2)
     parser.add_argument('--data_dir', type=str, default='/home/shtoshni/Research/rap_nlp/data/lambada/coref_data')
-    parser.add_argument('--train_size', type=int, default=10000)
-    parser.add_argument('--val_size', type=int, default=5000)
+    parser.add_argument('--train_size', type=int, default=None)
+    parser.add_argument('--val_size', type=int, default=5200)
     parser.add_argument('--base_model_dir', type=str, default="../models/")
     parser.add_argument('--seed', type=int, default=42)
 

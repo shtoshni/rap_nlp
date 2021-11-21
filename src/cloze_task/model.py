@@ -60,15 +60,16 @@ class ClozeModel(LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.init_lr)
-        if self.lr_decay == 'square_root':
-            scheduler = get_inverse_square_root_decay(
-                optimizer, num_warmup_steps=0.1 * self.num_training_steps,
-            )
-        else:
-            scheduler = get_linear_schedule_with_warmup(
-                optimizer, num_warmup_steps=0.1 * self.num_training_steps,
-                num_training_steps=self.num_training_steps
-            )
+        # if self.lr_decay == 'square_root':
+        scheduler = get_inverse_square_root_decay(
+            optimizer, num_warmup_steps=0.1 * self.num_training_steps,
+        )
+
+        # else:
+        #     scheduler = get_linear_schedule_with_warmup(
+        #         optimizer, num_warmup_steps=0.1 * self.num_training_steps,
+        #         num_training_steps=self.num_training_steps
+        #     )
 
         scheduler = {'scheduler': scheduler, 'interval': 'step'}
         return [optimizer], [scheduler]

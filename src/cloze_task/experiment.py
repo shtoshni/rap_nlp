@@ -17,13 +17,13 @@ from pytorch_lightning.loggers import WandbLogger
 
 def experiment(args):
     # Tensorboard logger
-    logger = TensorBoardLogger(
-        save_dir=args.save_dir,
-        version=args.model_name,
-        name=None,
-    )
+    # logger = TensorBoardLogger(
+    #     save_dir=args.save_dir,
+    #     version=args.model_name,
+    #     name=None,
+    # )
     # WandB logger
-    # logger = WandbLogger(name=args.model_name, id=args.model_name, project='lambada_nlp', save_dir=args.save_dir)
+    logger = WandbLogger(name=args.model_name, id=args.model_name, project='lambada_nlp', save_dir=args.save_dir)
 
     # Callbacks
     lr_logger = LearningRateMonitor()
@@ -53,8 +53,12 @@ def experiment(args):
     datamodule = ClozeTaskDataModule(**vars(args))
     datamodule.setup()
 
-    one_epoch_batches = datamodule.estimate_train_batches()
-    effective_batch_size = int(math.ceil(args.train_size / one_epoch_batches))
+    num_train_examples, one_epoch_batches = datamodule.estimate_train_batches()
+    effective_batch_size = int(math.ceil(num_train_examples / one_epoch_batches))
+    # args.num_training_steps = one_epoch_batches * args.max_epochs
+    # print(f"\n\nOne epoch batches: {one_epoch_batches}, Amortized batch size: {effective_batch_size}")
+    # print(f"Number of training steps: {args.num_training_steps}\n\n")
+
     args.accumulate_grad_batches = int(math.ceil(args.real_batch_size / effective_batch_size))
     args.num_training_steps = one_epoch_batches * args.max_epochs / args.accumulate_grad_batches
 

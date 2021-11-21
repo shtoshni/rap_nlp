@@ -62,10 +62,11 @@ class ClozeTaskDataModule(LightningDataModule):
             self.dataset_dict[split] = self._load_dataset(split)
 
     def estimate_train_batches(self):
-        counter = 0
+        batch_counter = 0
         for _ in self.train_dataloader():
-            counter += 1
-        return counter
+            batch_counter += 1
+        example_counter = len(self.dataset_dict['train'].input_ids)
+        return example_counter, batch_counter
 
     def get_tokenizer(self) -> GPT2TokenizerFast:
         return self.tokenizer

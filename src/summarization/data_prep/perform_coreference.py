@@ -70,7 +70,7 @@ def process_dataset(output_dir, dataset_name, model_loc, source_loc, max_docs=No
                 output_dict['orig_idx'] = instance['id']
 
                 coref_output_dict = coref_model.perform_coreference([summary, document])
-                output_dict['sentences'] = coref_output_dict['tokenized_doc']['sentences_indices']
+                output_dict['sentences'] = coref_output_dict['tokenized_doc']['sentences']
                 output_dict['part_lens'] = coref_output_dict['tokenized_doc']['part_lens']
                 output_dict['coref_clusters'] = coref_output_dict['clusters']
 
