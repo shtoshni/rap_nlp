@@ -67,6 +67,7 @@ def process_dataset(input_dir, output_dir, dataset_name, model_loc, source_loc, 
 
             story, continuation = instance
             story = story.strip().split(" ")
+            story = [[word for word in story]]
             continuation = continuation.strip()
 
             output_dict = {'idx': idx}
