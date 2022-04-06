@@ -16,12 +16,6 @@ from pytorch_lightning.loggers import WandbLogger
 
 
 def experiment(args):
-    # Tensorboard logger
-    # logger = TensorBoardLogger(
-    #     save_dir=args.save_dir,
-    #     version=args.model_name,
-    #     name=None,
-    # )
     # WandB logger
     logger = WandbLogger(name=args.model_name, id=args.model_name, project='lambada_nlp', save_dir=args.save_dir)
 

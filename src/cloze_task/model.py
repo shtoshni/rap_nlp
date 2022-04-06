@@ -21,8 +21,9 @@ class ClozeModel(LightningModule):
 
         self.model = GPT2LMHeadModel.from_pretrained(
             model_name, output_hidden_states=False,
-            gradient_checkpointing=True, use_cache=False,
+            use_cache=False,
         )
+        self.model.gradient_checkpointing_enable()
 
         # print(self.model.config)
         # print(self.model.config.vocab_size)
@@ -43,7 +44,7 @@ class ClozeModel(LightningModule):
 
         parser.add_argument('--model_size', default='base', type=str,
                             choices=['base', 'medium', 'large'],
-                            help='BART model size.')
+                            help='GPT2 model size.')
         # Chain probability
         parser.add_argument('--chain_prob', type=float, default=0.0)
         # Chain representation

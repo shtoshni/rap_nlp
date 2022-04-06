@@ -16,7 +16,6 @@ def load_coref_model(model_loc, source_loc):
     from inference.model_inference import Inference
 
     model = Inference(model_loc)
-    model.model.max_span_width = 7
 
     return model
 

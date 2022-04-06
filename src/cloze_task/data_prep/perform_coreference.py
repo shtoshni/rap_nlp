@@ -66,6 +66,9 @@ def process_dataset(input_dir, output_dir, dataset_name, model_loc, source_loc, 
                 break
 
             story, continuation = instance
+            story = story.strip().split()
+            continuation = continuation.strip()
+
             output_dict = {'idx': idx}
             coref_output_dict = coref_model.perform_coreference(story)
             output_dict['input'] = flatten(coref_output_dict['tokenized_doc']['sentences'])
