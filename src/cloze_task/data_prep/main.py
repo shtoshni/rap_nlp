@@ -22,7 +22,7 @@ def main():
                         help="Dataset identifier",  type=str)
     parser.add_argument('-model_loc',
                         default="/home/shtoshni/Research/fast-coref/models/longformer_litbank/model.pth")
-    parser.add_argument('-source_loc', default='/home/shtoshni/Research/fast-coref/src')
+    parser.add_argument('-source_loc', default='/home/shtoshni/Research/coref_inference/src')
     parser.add_argument('-split', default='train', type=str, choices=['train', 'val', 'test'],
                         help="Maximum number of docs to process per split")
     parser.add_argument('-max_docs', default=None, type=int,

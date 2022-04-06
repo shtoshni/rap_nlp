@@ -39,7 +39,7 @@ def get_model_name(args, argparser):
     return f"cloze_{str_repr.strip('_')}"
 
 
-def main(args, argparser):
+def main(args, parser):
     seed_everything(args.seed)
 
     args.chain_prob = 1.0 if args.oracle else args.chain_prob

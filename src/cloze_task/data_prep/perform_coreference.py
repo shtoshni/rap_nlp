@@ -79,4 +79,5 @@ def process_dataset(input_dir, output_dir, dataset_name, model_loc, source_loc, 
 
             if (idx + 1) % 100 == 0:
                 logger.info(f"Processed {idx + 1} docs")
+                f.flush()
 
