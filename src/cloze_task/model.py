@@ -96,8 +96,8 @@ class ClozeModel(LightningModule):
             # suffix_ids = output_ids[:, batch['input_ids'].shape[1]:].tolist()
             corr = 0
             for suffix_id, output_id in zip(suffix_ids, batch['output_ids']):
-                # print(suffix_id, output_id[:1])
-                corr += int(suffix_id == output_id[:1])
+                # print(suffix_id, output_id[:1].tolist())
+                corr += int(suffix_id == output_id.tolist()[:1])
             return {
                 'pred': suffix_ids,
                 'gt': batch['output_ids'],
@@ -118,6 +118,7 @@ class ClozeModel(LightningModule):
     #     print("Training Steps:", self.current_epoch_steps)
 
     def validation_step(self, batch, batch_ids, split="val"):
+        # print(batch)
         output = self(batch)
         return output
 

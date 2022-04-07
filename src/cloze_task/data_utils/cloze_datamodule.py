@@ -1,5 +1,5 @@
 import torch
-from transformers import GPT2TokenizerFast, LongformerTokenizerFast
+from transformers import GPT2Tokenizer, LongformerTokenizer
 from os import path
 from pytorch_lightning.core.datamodule import LightningDataModule
 from cloze_task.data_utils.cloze_dataset import LambadaDataset
@@ -37,9 +37,9 @@ class ClozeTaskDataModule(LightningDataModule):
         self.num_workers = num_workers
 
         # Original tokenizer is used by the coreference model
-        self.orig_tokenizer = LongformerTokenizerFast.from_pretrained(f'allenai/longformer-large-4096')
+        self.orig_tokenizer = LongformerTokenizer.from_pretrained(f'allenai/longformer-large-4096')
         # Tokenizer used by the language model
-        self.tokenizer = GPT2TokenizerFast.from_pretrained(f'gpt2')
+        self.tokenizer = GPT2Tokenizer.from_pretrained(f'gpt2')
         self.tokenizer.pad_token = self.tokenizer.eos_token
         # self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
 
@@ -68,7 +68,7 @@ class ClozeTaskDataModule(LightningDataModule):
         example_counter = len(self.dataset_dict['train'].input_ids)
         return example_counter, batch_counter
 
-    def get_tokenizer(self) -> GPT2TokenizerFast:
+    def get_tokenizer(self) -> GPT2Tokenizer:
         return self.tokenizer
 
     def _load_dataset(self, split="train"):

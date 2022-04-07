@@ -37,7 +37,7 @@ class LambadaDataset(Dataset):
         batch_data = {"input_ids": [], "coref_clusters": [], "output_ids": []}
         for line in lines:
             instance = json.loads(line.strip())
-            batch_data["input_ids"].append(self.tokenizer.convert_tokens_to_ids(instance["input"]))
+            batch_data["input_ids"].append(instance["input"])
             if self.include_singletons:
                 batch_data["coref_clusters"].append(instance["coref_clusters"])
             else:
@@ -62,6 +62,8 @@ class LambadaDataset(Dataset):
 
         output_dict['input_ids'] = self.tokenizer.decode(input_ids)
         output_dict['output_ids'] = self.tokenizer.decode(self.output_ids[i])
+
+        # print(output_dict)
 
         return output_dict
 

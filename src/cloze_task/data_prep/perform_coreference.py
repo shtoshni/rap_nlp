@@ -13,8 +13,6 @@ def load_coref_model(model_loc, source_loc):
     from inference.model_inference import Inference
 
     model = Inference(model_loc)
-    model.model.max_span_width = 7
-
     return model
 
 
@@ -71,10 +69,17 @@ def process_dataset(input_dir, output_dir, dataset_name, model_loc, source_loc, 
             continuation = continuation.strip()
 
             output_dict = {'idx': idx}
-            coref_output_dict = coref_model.perform_coreference(story)
-            output_dict['input'] = flatten(coref_output_dict['tokenized_doc']['sentences'])
-            output_dict['output'] = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(continuation))
-            output_dict['coref_clusters'] = coref_output_dict['clusters']
+            if split == 'train':
+                story[0].append(continuation)
+                coref_output_dict = coref_model.perform_coreference(story)
+                output_dict['input'] = flatten(coref_output_dict['tokenized_doc']['sentences'])
+                # output_dict['output'] = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(continuation))
+                output_dict['coref_clusters'] = coref_output_dict['clusters']
+            else:
+                coref_output_dict = coref_model.perform_coreference(story)
+                output_dict['input'] = flatten(coref_output_dict['tokenized_doc']['sentences'])
+                output_dict['output'] = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(continuation))
+                output_dict['coref_clusters'] = coref_output_dict['clusters']
 
             f.write(json.dumps(output_dict) + "\n")
 
