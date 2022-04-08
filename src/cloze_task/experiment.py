@@ -64,7 +64,7 @@ def experiment(args):
     last_checkpoint = path.join(checkpoint_callback.dirpath, "cloze-last.ckpt")
     if path.isfile(last_checkpoint):
         print("Resuming training from: ", last_checkpoint)
-        # Currently I don't see a way to early stopping when resuming training
+        # Currently, I don't see a way to early stopping when resuming training
         # Below is a hacky way of checking for early stopping criteria from saved checkpoint
         checkpoint = torch.load(last_checkpoint, map_location='cpu')['callbacks']
         early_stop_callback_state = checkpoint[EarlyStopping]
