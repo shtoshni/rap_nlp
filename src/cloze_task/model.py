@@ -1,3 +1,4 @@
+import re
 import torch
 from argparse import ArgumentParser
 
@@ -6,7 +7,8 @@ from pytorch_lightning.core.lightning import LightningModule
 from transformers import GPT2LMHeadModel
 from transformers import get_linear_schedule_with_warmup
 from pytorch_utils.optimization import get_inverse_square_root_decay
-
+import json
+from os import path
 
 class ClozeModel(LightningModule):
     def __init__(self, args, tokenizer):
@@ -36,7 +38,7 @@ class ClozeModel(LightningModule):
             self.model.resize_token_embeddings(len(self.tokenizer))
 
         self.token_mask = (torch.arange(self.model.config.vocab_size) >= 50257).float()
-        print(self.token_mask)
+        # print(self.token_mask)
 
     @staticmethod
     def add_model_specific_args(parent_parser):
@@ -49,6 +51,9 @@ class ClozeModel(LightningModule):
         parser.add_argument('--chain_prob', type=float, default=0.0)
         # Chain representation
         parser.add_argument('--chain_rep', type=str, default='canonical', choices=['canonical', 'antecedent'])
+        # Denote mentions
+        parser.add_argument('--denote_mentions', default=False, action="store_true",
+                            help="Whether to represent mentions in text or not.")
         # Coref length
         parser.add_argument('--coref_len', type=int, default=None, help="Max length of coref mention.")
         # Include singletons
@@ -79,30 +84,64 @@ class ClozeModel(LightningModule):
         if self.training:
             return self.model(**batch, return_dict=False)[0]
         else:
-            # output_ids = self.model.generate(
-            #     input_ids=batch['input_ids'],
-            #     num_beams=4, max_length=batch['input_ids'].shape[1] + 1, early_stopping=True,
-            #     pad_token_id=self.tokenizer.eos_token_id, eos_token_id=self.tokenizer.eos_token_id,
-            # )
+            # Perplexity calculation
+            perp_batch = batch["perp"]
+            num_terms = torch.sum(perp_batch["input_ids"] != self.tokenizer.pad_token_id).item()
 
-            logits = self.model(input_ids=batch['input_ids']).logits
-            self.token_mask = self.token_mask.to(device=logits.device)
-            # print(logits)
-            # print(logits.shape)
+            lm_logits = self.model(input_ids=perp_batch['input_ids'], return_dict=True)['logits']
+            self.token_mask = self.token_mask.to(lm_logits.device)
+            lm_logits = lm_logits * (1 - self.token_mask) + self.token_mask * (-1e10)
+            shift_logits = lm_logits[..., :-1, :].contiguous()
+            shift_labels = perp_batch['labels'][..., 1:].contiguous()
+            loss_fct = torch.nn.CrossEntropyLoss()
+            loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1)).item()
 
-            last_token_logit = logits[0, -1, :] * (1 - self.token_mask) + self.token_mask * (-1e10)
-            suffix_ids = [[torch.argmax(last_token_logit, dim=0).item()]]
+            # Generate last token
 
-            # suffix_ids = output_ids[:, batch['input_ids'].shape[1]:].tolist()
+            # Function to ignore special added tokens
+            def prefix_allowed_tokens_fn(batch_id, input_ids):
+                return list(range(1, 50256))
+
+            cloze_batch = batch["cloze"]
+            output_ids = self.model.generate(
+                input_ids=cloze_batch['input_ids'],
+                num_beams=4, max_length=cloze_batch['input_ids'].shape[1] + 4, early_stopping=True,
+                pad_token_id=self.tokenizer.eos_token_id, eos_token_id=self.tokenizer.eos_token_id,
+                prefix_allowed_tokens_fn=prefix_allowed_tokens_fn
+            )
+
+            suffix_ids = output_ids[:, cloze_batch['input_ids'].shape[1]:].tolist()
             corr = 0
-            for suffix_id, output_id in zip(suffix_ids, batch['output_ids']):
-                # print(suffix_id, output_id[:1].tolist())
-                corr += int(suffix_id == output_id.tolist()[:1])
+
+            pred_suffix_list = []
+            gt_suffix_list = []
+            for suffix_id, output_id in zip(suffix_ids, cloze_batch['output_ids']):
+                pred_suffixes = self.tokenizer.decode(suffix_id, clean_up_tokenization_spaces=True).strip().split(" ")
+                pred_suffixes = [re.sub(r'[^\w\s]', '', pred_suffix) for pred_suffix in pred_suffixes]
+                pred_suffix = ''
+                for suffix in pred_suffixes:
+                    if suffix != '':
+                        pred_suffix = suffix
+                        break
+                pred_suffix_list.append(pred_suffix)
+
+                gt_suffix = self.tokenizer.decode(output_id.tolist(), clean_up_tokenization_spaces=True).split(" ")[0].strip()
+                gt_suffix_list.append(gt_suffix)
+
+                # print(pred_suffix, gt_suffix)
+                # print(loss, num_terms, perp_batch["input_ids"])
+                corr += int(pred_suffix == gt_suffix)
             return {
-                'pred': suffix_ids,
-                'gt': batch['output_ids'],
+                # Cloze task output
+                'pred': pred_suffix_list[0],
+                'gt': gt_suffix_list[0],
                 'corr': corr,
-                'total': len(suffix_ids)
+                'total': len(suffix_ids),
+                'prefix': self.tokenizer.decode(cloze_batch['input_ids'].tolist()[0][1:]).strip(),
+
+                # Perplexity output
+                'loss': loss,
+                'num_terms': num_terms,
             }
 
     def training_step(self, batch, batch_ids):
@@ -114,25 +153,42 @@ class ClozeModel(LightningModule):
         # print(batch["input_ids"].shape[0])
         return {'loss': loss}
 
-    # def training_epoch_end(self, outputs):
-    #     print("Training Steps:", self.current_epoch_steps)
-
     def validation_step(self, batch, batch_ids, split="val"):
         # print(batch)
         output = self(batch)
+        # print(output)
         return output
 
     def test_step(self, batch, batch_ids, split="test"):
         output = self(batch)
+        # print(output)
         return output
 
     def validation_epoch_end(self, outputs, split='val'):
-        total_corr = sum([batch_output['corr'] for batch_output in outputs])
-        total = sum([batch_output['total'] for batch_output in outputs])
-        val_acc = total_corr/total
-        print(total_corr, total, val_acc)
-        self.log(f'{split}_acc', val_acc)
-        return {'val_acc': val_acc}
+        if path.exists(self.model_dirpath):
+            log_file = path.join(self.model_dirpath, f"{split}_log.jsonl")
+        else:
+            log_file = "/dev/null"
+
+        with open(log_file, 'w') as f:
+            total_corr = sum([batch_output['corr'] for batch_output in outputs])
+            total = sum([batch_output['total'] for batch_output in outputs])
+            cloze_acc = total_corr/total
+
+            perp_num = sum([batch_output['loss'] * batch_output['num_terms'] for batch_output in outputs])
+            perp_den = sum([batch_output['num_terms'] for batch_output in outputs])
+            perp = perp_num/perp_den
+
+            print(total_corr, total, cloze_acc)
+            print(f"Perplexity: {perp:.2f}")
+            self.log(f'{split}_acc', cloze_acc)
+            self.log(f'{split}_perp', perp)
+
+            for batch_output in outputs:
+                f.write(json.dumps(batch_output) + "\n")
+
+        print(f"Logs at: {log_file}")
+        # return {'val_acc': cloze_acc, 'val_perp': perp}
 
     def test_epoch_end(self, outputs):
         self.validation_epoch_end(outputs, split='test')

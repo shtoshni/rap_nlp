@@ -17,7 +17,7 @@ from pytorch_lightning.loggers import WandbLogger
 
 def experiment(args):
     # WandB logger
-    # logger = WandbLogger(name=args.model_name, id=args.model_name, project='lambada_nlp', save_dir=args.save_dir)
+    logger = WandbLogger(name=args.model_name, id=args.model_name, project='lambada_nlp', save_dir=args.save_dir)
 
     # Callbacks
     lr_logger = LearningRateMonitor()
@@ -82,7 +82,7 @@ def experiment(args):
             precision=args.precision,
             weights_save_path=args.save_dir,
             resume_from_checkpoint=last_checkpoint,
-            # logger=logger,
+            logger=logger,
             callbacks=[lr_logger, early_stop_callback, checkpoint_callback],
             reload_dataloaders_every_epoch=True,
             gradient_clip_val=1.0, terminate_on_nan=True)
@@ -97,8 +97,8 @@ def experiment(args):
             gpus=-1,
             precision=args.precision,
             weights_save_path=args.save_dir,
+            logger=logger,
         )
-            # logger=logger)
 
     lm_model = ClozeModel.load_from_checkpoint(
         checkpoint_path=checkpoint_callback.best_model_path, tokenizer=datamodule.tokenizer)

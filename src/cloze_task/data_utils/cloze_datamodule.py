@@ -81,7 +81,7 @@ class ClozeTaskDataModule(LightningDataModule):
             tokenizer=self.orig_tokenizer, file_path=path.join(self.data_dir, f"{split}.jsonlines"),
             max_instances=(self.train_size if split == 'train' else self.val_size),
             chain_prob=chain_prob, chain_rep=self.chain_rep, coref_len=self.coref_len,
-            include_singletons=self.include_singletons,
+            include_singletons=self.include_singletons, split=split,
         )
 
     def train_dataloader(self):

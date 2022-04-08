@@ -26,7 +26,10 @@ def get_model_name(args, argparser):
     str_repr = str_repr.strip('_')
 
     if args.include_singletons:
-        str_repr += f"_singletons"
+        str_repr += "_singletons"
+
+    if args.denote_mentions:
+        str_repr += "_ments"
 
     if args.chain_prob:
         str_repr += f"_cp_{int(100 * args.chain_prob)}"

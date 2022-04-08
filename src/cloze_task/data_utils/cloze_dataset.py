@@ -12,15 +12,17 @@ logger = logging.getLogger(__name__)
 
 class LambadaDataset(Dataset):
 
-    def __init__(self, tokenizer, file_path, max_instances=None, chain_prob=0.0,
-                 chain_rep='canonical', coref_len=None, include_singletons=False):
+    def __init__(self, tokenizer, file_path, max_instances=None, chain_prob=0.0, chain_rep='canonical',
+                 coref_len=None, denote_mentions=False, include_singletons=False, split="train"):
         # print(file_path)
         assert os.path.isfile(file_path)
         self.chain_prob = chain_prob
         self.chain_rep = chain_rep
         self.coref_len = coref_len
+        self.denote_mentions = denote_mentions
         self.include_singletons = include_singletons
         self.tokenizer = tokenizer
+        self.split = split
 
         with open(file_path, encoding="utf-8") as f:
             self.lines = [line for line in f.read().splitlines() if (len(line) > 0 and not line.isspace())]
@@ -43,7 +45,9 @@ class LambadaDataset(Dataset):
             else:
                 batch_data["coref_clusters"].append(
                     [cluster for cluster in instance["coref_clusters"] if len(cluster) > 1])
-            batch_data["output_ids"].append(instance["output"])
+
+            if self.split != "train":
+                batch_data["output_ids"].append(instance["output"])
         return batch_data
 
     def __len__(self):
@@ -61,7 +65,8 @@ class LambadaDataset(Dataset):
             input_ids = self.input_ids[i]
 
         output_dict['input_ids'] = self.tokenizer.decode(input_ids)
-        output_dict['output_ids'] = self.tokenizer.decode(self.output_ids[i])
+        if self.split != "train":
+            output_dict['output_ids'] = self.tokenizer.decode(self.output_ids[i])
 
         # print(output_dict)
 
@@ -93,12 +98,14 @@ class LambadaDataset(Dataset):
         for token_idx, input_id in enumerate(input_ids):
             if token_idx in token_start_to_cluster_idx:
                 for _ in token_start_to_cluster_idx[token_idx]:
-                    mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(MENT_START))
+                    if self.denote_mentions:
+                        mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(MENT_START))
 
             mod_input_ids.append(input_id)
             if token_idx in token_end_to_cluster_idx:
                 for cluster_idx, ment_start in token_end_to_cluster_idx[token_idx]:
-                    mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(MENT_END))
+                    if self.denote_mentions:
+                        mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(MENT_END))
                     if cluster_idx in clusters_seen:
                         mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_START))
                         if self.coref_len is None:
@@ -110,8 +117,6 @@ class LambadaDataset(Dataset):
                         if self.chain_rep == 'antecedent':
                             # Update cluster representation
                             clusters_seen[cluster_idx] = input_ids[ment_start: token_idx + 1]
-
-                        # If using antecedent update the cluster representation here
                     else:
                         clusters_seen[cluster_idx] = input_ids[ment_start: token_idx + 1]
 
