@@ -181,8 +181,11 @@ class ClozeModel(LightningModule):
 
             print(total_corr, total, cloze_acc)
             print(f"Perplexity: {perp:.2f}")
-            self.log(f'{split}_acc', cloze_acc)
-            self.log(f'{split}_perp', perp)
+
+            if len(outputs) >= 10:
+                # Avoid logging validation checks
+                self.log(f'{split}_acc', cloze_acc)
+                self.log(f'{split}_perp', perp)
 
             for batch_output in outputs:
                 f.write(json.dumps(batch_output) + "\n")
