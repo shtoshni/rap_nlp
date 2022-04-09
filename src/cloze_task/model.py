@@ -9,6 +9,8 @@ from transformers import get_linear_schedule_with_warmup
 from pytorch_utils.optimization import get_inverse_square_root_decay
 import json
 from os import path
+from data_utils.stopwords import stopwords
+
 
 class ClozeModel(LightningModule):
     def __init__(self, args, tokenizer):
@@ -26,10 +28,6 @@ class ClozeModel(LightningModule):
             use_cache=False,
         )
         self.model.gradient_checkpointing_enable()
-
-        # print(self.model.config)
-        # print(self.model.config.vocab_size)
-
         self.tokenizer = tokenizer
 
         self.num_training_steps = args.num_training_steps
@@ -38,6 +36,12 @@ class ClozeModel(LightningModule):
             self.model.resize_token_embeddings(len(self.tokenizer))
 
         self.token_mask = (torch.arange(self.model.config.vocab_size) >= 50257).float()
+        # bad_words = stopwords + [' ' + stopword for stopword in stopwords]
+        bad_words = [' ' + stopword for stopword in stopwords]
+        self.bad_word_ids = self.tokenizer(bad_words).input_ids
+        # print(self.bad_word_ids)
+        # print([self.tokenizer.convert_ids_to_tokens(bad_word_id) for bad_word_id in self.bad_word_ids])
+
         # print(self.token_mask)
 
     @staticmethod
@@ -66,16 +70,16 @@ class ClozeModel(LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.init_lr)
-        # if self.lr_decay == 'square_root':
-        scheduler = get_inverse_square_root_decay(
-            optimizer, num_warmup_steps=0.1 * self.num_training_steps,
-        )
+        if self.lr_decay == 'square_root':
+            scheduler = get_inverse_square_root_decay(
+                optimizer, num_warmup_steps=0.1 * self.num_training_steps,
+            )
 
-        # else:
-        #     scheduler = get_linear_schedule_with_warmup(
-        #         optimizer, num_warmup_steps=0.1 * self.num_training_steps,
-        #         num_training_steps=self.num_training_steps
-        #     )
+        else:
+            scheduler = get_linear_schedule_with_warmup(
+                optimizer, num_warmup_steps=0.1 * self.num_training_steps,
+                num_training_steps=self.num_training_steps
+            )
 
         scheduler = {'scheduler': scheduler, 'interval': 'step'}
         return [optimizer], [scheduler]
@@ -107,7 +111,8 @@ class ClozeModel(LightningModule):
                 input_ids=cloze_batch['input_ids'],
                 num_beams=4, max_length=cloze_batch['input_ids'].shape[1] + 4, early_stopping=True,
                 pad_token_id=self.tokenizer.eos_token_id, eos_token_id=self.tokenizer.eos_token_id,
-                prefix_allowed_tokens_fn=prefix_allowed_tokens_fn
+                prefix_allowed_tokens_fn=prefix_allowed_tokens_fn,
+                bad_words_ids=self.bad_word_ids
             )
 
             suffix_ids = output_ids[:, cloze_batch['input_ids'].shape[1]:].tolist()
