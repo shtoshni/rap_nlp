@@ -46,11 +46,11 @@ def main(args, parser):
     seed_everything(args.seed)
 
     args.chain_prob = 1.0 if args.oracle else args.chain_prob
-    max_memory = int(math.ceil(torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)))
-    if max_memory >= 24:
-        # For GPUs with memory >= 24 GB, double the token limit
-        args.max_token_limit = args.max_token_limit * (max_memory/12)
-        print(f"Setting max token limit to: {args.max_token_limit}")
+    # max_memory = int(math.ceil(torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)))
+    # if max_memory >= 24:
+    #     # For GPUs with memory >= 24 GB, double the token limit
+    #     args.max_token_limit = args.max_token_limit * (max_memory/12)
+    #     print(f"Setting max token limit to: {args.max_token_limit}")
 
     if args.max_epochs is None:
         # Changing the default value
