@@ -97,14 +97,16 @@ class LambadaDataset(Dataset):
         mod_input_ids = []
         for token_idx, input_id in enumerate(input_ids):
             if token_idx in token_start_to_cluster_idx:
-                for _ in token_start_to_cluster_idx[token_idx]:
-                    if self.denote_mentions:
+                for cluster_idx in token_start_to_cluster_idx[token_idx]:
+                    if (self.denote_mentions and cluster_idx in clusters_seen) or self.include_singletons:
+                        # Head of the chain and singletons are represented in the same way
                         mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(MENT_START))
 
             mod_input_ids.append(input_id)
             if token_idx in token_end_to_cluster_idx:
                 for cluster_idx, ment_start in token_end_to_cluster_idx[token_idx]:
-                    if self.denote_mentions:
+                    if (self.denote_mentions and cluster_idx in clusters_seen) or self.include_singletons:
+                        # Head of the chain and singletons are represented in the same way
                         mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(MENT_END))
                     if cluster_idx in clusters_seen:
                         mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_START))

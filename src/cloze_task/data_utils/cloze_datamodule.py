@@ -12,7 +12,7 @@ class ClozeTaskDataModule(LightningDataModule):
     def __init__(self,  data_dir=None, batch_size=8, max_token_limit=1000, num_workers=1,
                  train_size=1e6, val_size=500, model_size='base',
                  chain_prob=0.0, oracle=False,  chain_rep='canonical', coref_len=None,
-                 include_singletons=False,
+                 include_singletons=False, denote_mentions=False,
                  **kwargs):
         super().__init__()
 
@@ -30,6 +30,7 @@ class ClozeTaskDataModule(LightningDataModule):
 
         self.chain_rep = chain_rep
         self.coref_len = coref_len
+        self.denote_mentions = denote_mentions
         self.include_singletons = include_singletons
 
         self.batch_size = batch_size
@@ -81,7 +82,7 @@ class ClozeTaskDataModule(LightningDataModule):
             tokenizer=self.orig_tokenizer, file_path=path.join(self.data_dir, f"{split}.jsonlines"),
             max_instances=(self.train_size if split == 'train' else self.val_size),
             chain_prob=chain_prob, chain_rep=self.chain_rep, coref_len=self.coref_len,
-            include_singletons=self.include_singletons, split=split,
+            include_singletons=self.include_singletons, split=split, denote_mentions=self.denote_mentions,
         )
 
     def train_dataloader(self):
