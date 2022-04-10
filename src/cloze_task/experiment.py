@@ -26,7 +26,7 @@ def experiment(args):
     checkpoint_callback = MyModelCheckpoint(
         verbose=True,
         dirpath=path.join(args.model_dirpath, "checkpoints"),
-        monitor='val_acc',
+        monitor='val_perp',
         mode='max',
         save_top_k=1,
         save_last=True,
@@ -34,7 +34,7 @@ def experiment(args):
         prefix='cloze')
 
     early_stop_callback = EarlyStopping(
-        monitor='val_acc',
+        monitor='val_perp',
         mode='max',
         patience=args.patience,
         verbose=True,
