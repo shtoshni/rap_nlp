@@ -30,7 +30,7 @@ def experiment(args):
         verbose=True,
         dirpath=path.join(args.model_dirpath, "checkpoints"),
         monitor='val_perp',
-        mode='max',
+        mode='min',
         save_top_k=1,
         save_last=True,
         period=1,
@@ -38,7 +38,7 @@ def experiment(args):
 
     early_stop_callback = EarlyStopping(
         monitor='val_perp',
-        mode='max',
+        mode='min',
         patience=args.patience,
         verbose=True,
     )

@@ -1,3 +1,4 @@
+import math
 import re
 import torch
 from argparse import ArgumentParser
@@ -183,6 +184,7 @@ class ClozeModel(LightningModule):
             perp_num = sum([batch_output['loss'] * batch_output['num_terms'] for batch_output in outputs])
             perp_den = sum([batch_output['num_terms'] for batch_output in outputs])
             perp = perp_num/perp_den
+            perp = math.exp(perp)
 
             print(total_corr, total, cloze_acc)
             print(f"Perplexity: {perp:.2f}")
