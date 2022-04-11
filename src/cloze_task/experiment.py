@@ -80,7 +80,7 @@ def experiment(args):
     if to_train:
         trainer = Trainer.from_argparse_args(
             args,
-            amp_level='O2',
+            amp_level='O1',
             gpus=-1,
             precision=args.precision,
             weights_save_path=args.save_dir,
