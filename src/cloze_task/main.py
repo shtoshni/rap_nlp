@@ -12,7 +12,7 @@ from cloze_task.experiment import experiment
 def get_model_name(args, argparser):
     arg_to_short_names = OrderedDict(
         [("train_size", "ts"), ('model_size', 'size'),
-         ("lr_decay", "decay"),
+         ("lr_decay", "decay"), ("init_lr", "lr"),
          ("chain_rep", "cr"), ("coref_len", "clen"),
          ]
     )
@@ -20,7 +20,8 @@ def get_model_name(args, argparser):
     str_repr = ""
     for arg_name, short_name in arg_to_short_names.items():
         val = getattr(args, arg_name)
-        if val != argparser.get_default(arg_name):
+        # if val != argparser.get_default(arg_name):
+        if val is not None:
             str_repr += short_name + "_" + str(val).replace('/', '-') + "_"
 
     str_repr = str_repr.strip('_')
