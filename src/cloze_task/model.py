@@ -85,7 +85,7 @@ class ClozeModel(LightningModule):
         scheduler = {'scheduler': scheduler, 'interval': 'step'}
         return [optimizer], [scheduler]
 
-    def forward(self, batch, labels=None):
+    def forward(self, batch, split="train"):
         if self.training:
             return self.model(**batch, return_dict=False)[0]
         else:
@@ -108,9 +108,14 @@ class ClozeModel(LightningModule):
                 return list(range(1, 50256))
 
             cloze_batch = batch["cloze"]
+            if split == "test":
+                beam_size = 4
+            else:
+                beam_size = 1
             gen_output = self.model.generate(
                 input_ids=cloze_batch['input_ids'],
-                num_beams=4, max_length=cloze_batch['input_ids'].shape[1] + 4, early_stopping=True,
+                num_beams=beam_size, num_return_sequences=beam_size, do_sample=True,
+                max_length=cloze_batch['input_ids'].shape[1] + 4, early_stopping=True,
                 pad_token_id=self.tokenizer.eos_token_id, eos_token_id=self.tokenizer.eos_token_id,
                 prefix_allowed_tokens_fn=prefix_allowed_tokens_fn,
                 # bad_words_ids=self.bad_word_ids,
@@ -119,38 +124,31 @@ class ClozeModel(LightningModule):
 
             suffix_ids = gen_output.sequences[:, cloze_batch['input_ids'].shape[1]:].tolist()
 
-            # suffix_ids = output_ids[:, cloze_batch['input_ids'].shape[1]:].tolist()
-            corr = 0
-
-            pred_suffix_list = []
-            gt_suffix_list = []
-
             gt_suffix = self.tokenizer.decode(
                 cloze_batch['output_ids'][0].tolist(),
                 clean_up_tokenization_spaces=True).split(" ")[0].strip()
-            gt_suffix_list.append(gt_suffix)
 
+            pred_suffix = ''
+            pred_suffix_list = []
             for suffix_id in suffix_ids:
-                pred_suffix = self.tokenizer.decode(suffix_id, clean_up_tokenization_spaces=True).strip().split(" ")
-                pred_suffix = re.sub(r'[^\w\s]', pred_suffix)
+                pred_suffix = self.tokenizer.decode(suffix_id, clean_up_tokenization_spaces=True).strip().split(" ")[0]
+                pred_suffix = re.sub(r'[^\w\s]', '', pred_suffix)
                 # pred_suffixes = [re.sub(r'[^\w\s]', '', pred_suffix) for pred_suffix in pred_suffixes]
+                pred_suffix_list.append(pred_suffix)
                 if pred_suffix in stopwords or pred_suffix == '':
                     continue
-                pred_suffix = ''
-                # for suffix in pred_suffixes:
-                #     if suffix != '':
-                #         pred_suffix = suffix
-                #         break
-                pred_suffix_list.append(pred_suffix)
-                # print(pred_suffix, gt_suffix)
-                # print(loss, num_terms, perp_batch["input_ids"])
-                corr += int(pred_suffix == gt_suffix)
+                else:
+                    break
+
+            corr = int(pred_suffix == gt_suffix)
+
             return {
                 # Cloze task output
-                'pred': pred_suffix_list[0],
-                'gt': gt_suffix_list[0],
+                'pred': pred_suffix,
+                'all_pred': pred_suffix_list,
+                'gt': gt_suffix,
                 'corr': corr,
-                'total': len(suffix_ids),
+                'total': 1,
                 'prefix': self.tokenizer.decode(cloze_batch['input_ids'].tolist()[0][1:]).strip(),
 
                 # Perplexity output
@@ -169,12 +167,12 @@ class ClozeModel(LightningModule):
 
     def validation_step(self, batch, batch_ids, split="val"):
         # print(batch)
-        output = self(batch)
+        output = self(batch, split=split)
         # print(output)
         return output
 
     def test_step(self, batch, batch_ids, split="test"):
-        output = self(batch)
+        output = self(batch, split=split)
         # print(output)
         return output
 

@@ -74,7 +74,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_token_limit', type=int, default=2000)
     parser.add_argument('--patience', type=int, default=3, help='Early stopping patience')
     parser.add_argument('--slurm_id', type=str, default=None, help='Slurm ID')
-    parser.add_argument('--init_lr', type=float, default=5e-4)
+    parser.add_argument('--init_lr', type=float, default=5e-5)
     parser.add_argument('--lr_decay', default="square_root", type=str, choices=["linear", "square_root"])
     parser.add_argument('--num_workers', type=int, default=2)
     parser.add_argument('--data_dir', type=str, default='/home/shtoshni/Research/rap_nlp/data/lambada/coref_data')

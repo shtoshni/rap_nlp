@@ -1,6 +1,5 @@
 import sys
 import math
-import os
 import json
 import torch
 
@@ -9,10 +8,11 @@ from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.loggers import WandbLogger
 
 from cloze_task.model import ClozeModel
 from callbacks.model_checkpoint import MyModelCheckpoint
-from pytorch_lightning.loggers import WandbLogger
+from cloze_task.data_utils.cloze_datamodule import ClozeTaskDataModule
 
 
 def experiment(args):
@@ -46,7 +46,6 @@ def experiment(args):
     sys.stdout.flush()
 
     # Create datamodule
-    from cloze_task.data_utils.cloze_datamodule import ClozeTaskDataModule
     datamodule = ClozeTaskDataModule(**vars(args))
     datamodule.setup()
 
