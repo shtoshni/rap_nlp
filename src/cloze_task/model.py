@@ -108,32 +108,40 @@ class ClozeModel(LightningModule):
                 return list(range(1, 50256))
 
             cloze_batch = batch["cloze"]
-            output_ids = self.model.generate(
+            gen_output = self.model.generate(
                 input_ids=cloze_batch['input_ids'],
                 num_beams=4, max_length=cloze_batch['input_ids'].shape[1] + 4, early_stopping=True,
                 pad_token_id=self.tokenizer.eos_token_id, eos_token_id=self.tokenizer.eos_token_id,
                 prefix_allowed_tokens_fn=prefix_allowed_tokens_fn,
-                bad_words_ids=self.bad_word_ids
+                # bad_words_ids=self.bad_word_ids,
+                return_dict_in_generate=True
             )
 
-            suffix_ids = output_ids[:, cloze_batch['input_ids'].shape[1]:].tolist()
+            suffix_ids = gen_output.sequences[:, cloze_batch['input_ids'].shape[1]:].tolist()
+
+            # suffix_ids = output_ids[:, cloze_batch['input_ids'].shape[1]:].tolist()
             corr = 0
 
             pred_suffix_list = []
             gt_suffix_list = []
-            for suffix_id, output_id in zip(suffix_ids, cloze_batch['output_ids']):
-                pred_suffixes = self.tokenizer.decode(suffix_id, clean_up_tokenization_spaces=True).strip().split(" ")
-                pred_suffixes = [re.sub(r'[^\w\s]', '', pred_suffix) for pred_suffix in pred_suffixes]
+
+            gt_suffix = self.tokenizer.decode(
+                cloze_batch['output_ids'][0].tolist(),
+                clean_up_tokenization_spaces=True).split(" ")[0].strip()
+            gt_suffix_list.append(gt_suffix)
+
+            for suffix_id in suffix_ids:
+                pred_suffix = self.tokenizer.decode(suffix_id, clean_up_tokenization_spaces=True).strip().split(" ")
+                pred_suffix = re.sub(r'[^\w\s]', pred_suffix)
+                # pred_suffixes = [re.sub(r'[^\w\s]', '', pred_suffix) for pred_suffix in pred_suffixes]
+                if pred_suffix in stopwords or pred_suffix == '':
+                    continue
                 pred_suffix = ''
-                for suffix in pred_suffixes:
-                    if suffix != '':
-                        pred_suffix = suffix
-                        break
+                # for suffix in pred_suffixes:
+                #     if suffix != '':
+                #         pred_suffix = suffix
+                #         break
                 pred_suffix_list.append(pred_suffix)
-
-                gt_suffix = self.tokenizer.decode(output_id.tolist(), clean_up_tokenization_spaces=True).split(" ")[0].strip()
-                gt_suffix_list.append(gt_suffix)
-
                 # print(pred_suffix, gt_suffix)
                 # print(loss, num_terms, perp_batch["input_ids"])
                 corr += int(pred_suffix == gt_suffix)
