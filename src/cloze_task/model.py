@@ -109,12 +109,14 @@ class ClozeModel(LightningModule):
 
             cloze_batch = batch["cloze"]
             if split == "test":
-                beam_size = 4
+                num_return_sequences = 4
+                do_sample = True
             else:
-                beam_size = 1
+                num_return_sequences = 1
+                do_sample = False
             gen_output = self.model.generate(
                 input_ids=cloze_batch['input_ids'],
-                num_beams=beam_size, num_return_sequences=beam_size, do_sample=True,
+                num_beams=4, num_return_sequences=num_return_sequences, do_sample=do_sample,
                 max_length=cloze_batch['input_ids'].shape[1] + 4, early_stopping=True,
                 pad_token_id=self.tokenizer.eos_token_id, eos_token_id=self.tokenizer.eos_token_id,
                 prefix_allowed_tokens_fn=prefix_allowed_tokens_fn,
