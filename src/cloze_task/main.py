@@ -53,9 +53,9 @@ def main(args, parser):
     #     args.max_token_limit = args.max_token_limit * (max_memory/12)
     #     print(f"Setting max token limit to: {args.max_token_limit}")
 
-    if args.max_epochs is None:
+    if args.max_steps is None:
         # Changing the default value
-        args.max_epochs = 5
+        args.max_steps = 1e6
 
     args.save_dir = args.weights_save_path if args.weights_save_path is not None else args.base_model_dir
     args.model_name = get_model_name(args, parser)
@@ -71,9 +71,12 @@ if __name__ == '__main__':
     parser = ClozeModel.add_model_specific_args(parser)
     # Training args
     parser.add_argument('--batch_size', type=int, default=1)
-    parser.add_argument('--real_batch_size', type=int, default=64)
+    parser.add_argument('--real_batch_size', type=int, default=16)
     parser.add_argument('--max_token_limit', type=int, default=2000)
     parser.add_argument('--patience', type=int, default=3, help='Early stopping patience')
+    parser.add_argument('--save_step_frequency', type=int, default=2000, help='Save checkpoints every N steps')
+    parser.add_argument('--num_save_checkpoint', type=int, default=10,
+                        help='Max number of times checkpoints is to be saved')
     parser.add_argument('--slurm_id', type=str, default=None, help='Slurm ID')
     parser.add_argument('--init_lr', type=float, default=5e-5)
     parser.add_argument('--lr_decay', default="square_root", type=str, choices=["linear", "square_root"])

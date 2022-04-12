@@ -12,6 +12,7 @@ from pytorch_lightning.loggers import WandbLogger
 
 from cloze_task.model import ClozeModel
 from callbacks.model_checkpoint import MyModelCheckpoint
+from callbacks.checkpoint_every_n_steps import CheckpointEveryNSteps
 from cloze_task.data_utils.cloze_datamodule import ClozeTaskDataModule
 
 
@@ -43,8 +44,6 @@ def experiment(args):
         verbose=True,
     )
 
-    sys.stdout.flush()
-
     # Create datamodule
     datamodule = ClozeTaskDataModule(**vars(args))
     datamodule.setup()
@@ -56,12 +55,22 @@ def experiment(args):
     # print(f"Number of training steps: {args.num_training_steps}\n\n")
 
     args.accumulate_grad_batches = int(math.ceil(args.real_batch_size / effective_batch_size))
-    args.num_training_steps = one_epoch_batches * args.max_epochs / args.accumulate_grad_batches
+    if args.max_steps is None:
+        args.max_steps = args.num_save_checkpoint * args.save_step_frequency
+    else:
+        args.max_steps = max(args.max_steps, args.num_save_checkpoint * args.save_step_frequency)
 
     print(f"One epoch batches: {one_epoch_batches}, Amortized batch size: {effective_batch_size}")
     print("Acc. grad steps: %d, Number of training steps: %d" %
-          (args.accumulate_grad_batches, args.num_training_steps))
+          (args.accumulate_grad_batches, args.max_steps))
 
+    sys.stdout.flush()
+
+    # Callback for saving checkpoint every N steps
+    checkpoint_n_steps_callback = CheckpointEveryNSteps(
+        save_step_frequency=args.save_step_frequency, accumulate_grad_batches=args.accumulate_grad_batches)
+
+    # Check whether to train the model or evaluate
     to_train = True
     last_checkpoint = path.join(checkpoint_callback.dirpath, "cloze-last.ckpt")
     if path.isfile(last_checkpoint):
@@ -77,6 +86,7 @@ def experiment(args):
             checkpoint_callback = Namespace(**checkpoint[MyModelCheckpoint])
 
     if to_train:
+        # args.check_val_every_n_epoch = float('inf')
         trainer = Trainer.from_argparse_args(
             args,
             amp_level='O1',
@@ -85,9 +95,11 @@ def experiment(args):
             weights_save_path=args.save_dir,
             resume_from_checkpoint=last_checkpoint,
             logger=logger,
-            callbacks=[lr_logger, early_stop_callback, checkpoint_callback],
+            callbacks=[lr_logger, early_stop_callback, checkpoint_callback, checkpoint_n_steps_callback],
             reload_dataloaders_every_epoch=True,
-            gradient_clip_val=1.0, terminate_on_nan=True)
+            gradient_clip_val=1.0, terminate_on_nan=True,
+            check_val_every_n_epoch=float('inf'),
+        )
         if path.exists(last_checkpoint):
             lm_model = ClozeModel.load_from_checkpoint(last_checkpoint, tokenizer=datamodule.tokenizer)
         else:

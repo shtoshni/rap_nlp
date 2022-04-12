@@ -31,7 +31,7 @@ class ClozeModel(LightningModule):
         self.model.gradient_checkpointing_enable()
         self.tokenizer = tokenizer
 
-        self.num_training_steps = args.num_training_steps
+        # self.num_training_steps = args.max_steps
 
         if self.chain_prob:
             self.model.resize_token_embeddings(len(self.tokenizer))
@@ -70,16 +70,16 @@ class ClozeModel(LightningModule):
         return parser
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.init_lr)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.init_lr, weight_decay=0.0)
         if self.lr_decay == 'square_root':
             scheduler = get_inverse_square_root_decay(
-                optimizer, num_warmup_steps=0.1 * self.num_training_steps,
+                optimizer, num_warmup_steps=0.1 * self.max_steps,
             )
 
         else:
             scheduler = get_linear_schedule_with_warmup(
-                optimizer, num_warmup_steps=0.1 * self.num_training_steps,
-                num_training_steps=self.num_training_steps
+                optimizer, num_warmup_steps=0.1 * self.max_steps,
+                num_training_steps=self.max_steps
             )
 
         scheduler = {'scheduler': scheduler, 'interval': 'step'}
