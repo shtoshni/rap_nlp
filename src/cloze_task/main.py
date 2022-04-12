@@ -53,9 +53,9 @@ def main(args, parser):
     #     args.max_token_limit = args.max_token_limit * (max_memory/12)
     #     print(f"Setting max token limit to: {args.max_token_limit}")
 
-    if args.max_steps is None:
-        # Changing the default value
-        args.max_steps = 1e6
+    # if args.max_steps is None:
+    #     # Changing the default value
+    #     args.max_steps = 1e5
 
     args.save_dir = args.weights_save_path if args.weights_save_path is not None else args.base_model_dir
     args.model_name = get_model_name(args, parser)
