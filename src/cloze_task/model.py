@@ -59,8 +59,10 @@ class ClozeModel(LightningModule):
         # Denote mentions
         parser.add_argument('--denote_mentions', default=False, action="store_true",
                             help="Whether to represent mentions in text or not.")
+        parser.add_argument('--max_mention_len', type=int, default=None, help="Max length of mentions allowed.")
         # Coref length
         parser.add_argument('--coref_len', type=int, default=None, help="Max length of coref mention.")
+
         # Include singletons
         parser.add_argument('--include_singletons', default=False, action="store_true",
                             help="Whether to represent singletons in text or not.")

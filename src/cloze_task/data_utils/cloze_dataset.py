@@ -13,12 +13,16 @@ logger = logging.getLogger(__name__)
 class LambadaDataset(Dataset):
 
     def __init__(self, tokenizer, file_path, max_instances=None, chain_prob=0.0, chain_rep='canonical',
-                 coref_len=None, denote_mentions=False, include_singletons=False, split="train"):
+                 max_mention_len=None, coref_len=None, denote_mentions=False, include_singletons=False,
+                 split="train"):
         # print(file_path)
         assert os.path.isfile(file_path)
         self.chain_prob = chain_prob
         self.chain_rep = chain_rep
+
+        self.max_mention_len = max_mention_len
         self.coref_len = coref_len
+
         self.denote_mentions = denote_mentions
         self.include_singletons = include_singletons
         self.tokenizer = tokenizer
@@ -79,8 +83,9 @@ class LambadaDataset(Dataset):
 
         mentions_chosen = []
         for idx, cluster in enumerate(clusters_picked):
-            for mention, _ in cluster:
-                mentions_chosen.append((mention, idx))
+            for (ment_start, ment_end), _ in cluster:
+                if self.max_mention_len is None or (ment_end - ment_start + 1) <= self.max_mention_len:
+                    mentions_chosen.append(((ment_start, ment_end), idx))
 
         token_start_to_cluster_idx = defaultdict(list)
         token_end_to_cluster_idx = defaultdict(list)
