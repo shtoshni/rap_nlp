@@ -56,9 +56,15 @@ def experiment(args):
 
     args.accumulate_grad_batches = int(math.ceil(args.real_batch_size / effective_batch_size))
     if args.max_steps is None:
-        args.max_steps = args.num_save_checkpoint * args.save_step_frequency
-    else:
-        args.max_steps = max(args.max_steps, args.num_save_checkpoint * args.save_step_frequency)
+        if args.save_step_frequency is not None:
+            args.max_steps = args.num_save_checkpoint * args.save_step_frequency
+        elif args.train_size is not None:
+            args.save_step_frequency = args.train_size // args.real_batch_size
+            args.max_steps = args.num_save_checkpoint * args.save_step_frequency
+        else:
+            # 100K steps chosen as the arbitrary number
+            args.max_steps = 100_000
+            args.save_step_frequency = args.max_steps // args.num_save_checkpoint
 
     print(f"One epoch batches: {one_epoch_batches}, Amortized batch size: {effective_batch_size}")
     print("Acc. grad steps: %d, Number of training steps: %d" %

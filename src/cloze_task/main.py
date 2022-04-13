@@ -74,7 +74,7 @@ if __name__ == '__main__':
     parser.add_argument('--real_batch_size', type=int, default=16)
     parser.add_argument('--max_token_limit', type=int, default=2000)
     parser.add_argument('--patience', type=int, default=3, help='Early stopping patience')
-    parser.add_argument('--save_step_frequency', type=int, default=2000, help='Save checkpoints every N steps')
+    parser.add_argument('--save_step_frequency', type=int, default=None, help='Save checkpoints every N steps')
     parser.add_argument('--num_save_checkpoint', type=int, default=10,
                         help='Max number of times checkpoints is to be saved')
     parser.add_argument('--slurm_id', type=str, default=None, help='Slurm ID')
