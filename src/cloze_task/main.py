@@ -92,7 +92,7 @@ if __name__ == '__main__':
     parser.add_argument('--val_size', type=int, default=5200)
     parser.add_argument('--base_model_dir', type=str, default="../models/")
     parser.add_argument('--use_wandb', default=False, action="store_true")
-    parser.add_argument('--slurm_job_mins', type=int, default=235)
+    parser.add_argument('--slurm_job_mins', type=int, default=230)
     parser.add_argument('--seed', type=int, default=42)
 
     parser = Trainer.add_argparse_args(parser)
