@@ -11,9 +11,10 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.loggers import WandbLogger
 
 from cloze_task.model import ClozeModel
-from callbacks.model_checkpoint import MyModelCheckpoint
+from callbacks.my_early_stopping import MyEarlyStopping
 from callbacks.checkpoint_every_n_steps import CheckpointEveryNSteps
 from cloze_task.data_utils.cloze_datamodule import ClozeTaskDataModule
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 
 def experiment(args):
@@ -23,48 +24,24 @@ def experiment(args):
     else:
         logger = TensorBoardLogger(args.save_dir, name=args.model_name)
 
-    # Callbacks
-    lr_logger = LearningRateMonitor()
-    args.model_dirpath = path.join(args.save_dir, args.model_name)
-
-    checkpoint_callback = MyModelCheckpoint(
-        verbose=True,
-        dirpath=path.join(args.model_dirpath, "checkpoints"),
-        monitor='val_perp',
-        mode='min',
-        save_top_k=1,
-        save_last=True,
-        period=1,
-        prefix='cloze')
-
-    early_stop_callback = EarlyStopping(
-        monitor='val_perp',
-        mode='min',
-        patience=args.patience,
-        verbose=True,
-    )
-
     # Create datamodule
     datamodule = ClozeTaskDataModule(**vars(args))
     datamodule.setup()
 
     num_train_examples, one_epoch_batches = datamodule.estimate_train_batches()
     effective_batch_size = int(math.ceil(num_train_examples / one_epoch_batches))
-    # args.num_training_steps = one_epoch_batches * args.max_epochs
-    # print(f"\n\nOne epoch batches: {one_epoch_batches}, Amortized batch size: {effective_batch_size}")
-    # print(f"Number of training steps: {args.num_training_steps}\n\n")
 
     args.accumulate_grad_batches = int(math.ceil(args.real_batch_size / effective_batch_size))
-    if args.max_steps is None:
-        if args.save_step_frequency is not None:
-            args.max_steps = args.num_save_checkpoint * args.save_step_frequency
-        elif args.train_size is not None:
-            args.save_step_frequency = args.train_size // args.real_batch_size
+    if args.max_steps < 0:
+        if args.train_size is not None:
+            args.save_step_frequency = args.train_size // effective_batch_size
             args.max_steps = args.num_save_checkpoint * args.save_step_frequency
         else:
             # 100K steps chosen as the arbitrary number
-            args.max_steps = 100_000
+            args.max_steps = 25_000
             args.save_step_frequency = args.max_steps // args.num_save_checkpoint
+    else:
+        args.save_step_frequency = args.max_steps // args.num_save_checkpoint
 
     print(f"One epoch batches: {one_epoch_batches}, Amortized batch size: {effective_batch_size}")
     print("Acc. grad steps: %d, Number of training steps: %d" %
@@ -72,45 +49,92 @@ def experiment(args):
 
     sys.stdout.flush()
 
+    # Callbacks
+    lr_logger = LearningRateMonitor()
+    args.model_dirpath = path.join(args.save_dir, args.model_name)
+
+    checkpoint_callback = ModelCheckpoint(
+        verbose=True,
+        dirpath=path.join(args.model_dirpath, "checkpoints"),
+        monitor='val_perp',
+        mode='min',
+        save_top_k=1,
+        save_last=True,
+    )
+
+    early_stop_callback = MyEarlyStopping(
+        monitor='val_perp',
+        mode='min',
+        patience=args.patience,
+        verbose=True,
+    )
+
     # Callback for saving checkpoint every N steps
     checkpoint_n_steps_callback = CheckpointEveryNSteps(
-        save_step_frequency=args.save_step_frequency, accumulate_grad_batches=args.accumulate_grad_batches)
+        save_step_frequency=args.save_step_frequency, accumulate_grad_batches=args.accumulate_grad_batches,
+        slurm_id=args.slurm_id, slurm_job_mins=args.slurm_job_mins,
+    )
 
     # Check whether to train the model or evaluate
     to_train = True
-    last_checkpoint = path.join(checkpoint_callback.dirpath, "cloze-last.ckpt")
-    if path.isfile(last_checkpoint):
-        print("Resuming training from: ", last_checkpoint)
-        # Currently, I don't see a way to early stopping when resuming training
-        # Below is a hacky way of checking for early stopping criteria from saved checkpoint
-        checkpoint = torch.load(last_checkpoint, map_location='cpu')['callbacks']
-        early_stop_callback_state = checkpoint[EarlyStopping]
-        if early_stop_callback_state['wait_count'] >= early_stop_callback_state['patience']:
-            print("Early Stopping Triggered on Resumption!")
-            to_train = False
-            from argparse import Namespace
-            checkpoint_callback = Namespace(**checkpoint[MyModelCheckpoint])
+    last_checkpoint = path.join(checkpoint_callback.dirpath, "last.ckpt")
+    # if path.isfile(last_checkpoint):
+    #     print("Resuming training from: ", last_checkpoint)
+    #     # Currently, I don't see a way to early stopping when resuming training
+    #     # Below is a hacky way of checking for early stopping criteria from saved checkpoint
+    #     callbacks_state_dict = torch.load(last_checkpoint, map_location='cpu')['callbacks']
+    #     # print(checkpoint)
+    #     # print(checkpoint.keys())
+    #     # early_stop_callback_state = checkpoint[early_stop_callback]
+    #     # print(early_stop_callback_state)
+    #     early_stop_callback_state = None
+    #     checkpoint_callback_state = None
+    #     print(callbacks_state_dict)
+    #     for callback_obj, callback_state in callbacks_state_dict.items():
+    #         print(callback_obj, type(callback_obj))
+    #         print(callback_state)
+    #         if isinstance(callback_obj, EarlyStopping):
+    #             early_stop_callback_state = callback_state
+    #             print("Hello early stopping")
+    #         if isinstance(callback_obj, ModelCheckpoint):
+    #             checkpoint_callback_state = callback_state
+    #             print("Hello checkpoint")
+    #
+    #     if early_stop_callback_state['wait_count'] >= early_stop_callback_state['patience']:
+    #         print("Early Stopping Triggered on Resumption!")
+    #         to_train = False
+    #         from argparse import Namespace
+    #         checkpoint_callback = Namespace(**checkpoint_callback_state)
 
     if to_train:
         # args.check_val_every_n_epoch = float('inf')
         trainer = Trainer.from_argparse_args(
             args,
-            amp_level='O1',
+            # amp_level='O1',
+            # amp_backend='apex',
             gpus=-1,
             precision=args.precision,
-            weights_save_path=args.save_dir,
-            resume_from_checkpoint=last_checkpoint,
+            # weights_save_path=args.save_dir,
+            # resume_from_checkpoint=last_checkpoint,
             logger=logger,
             callbacks=[lr_logger, early_stop_callback, checkpoint_callback, checkpoint_n_steps_callback],
-            reload_dataloaders_every_epoch=True,
-            gradient_clip_val=1.0, terminate_on_nan=True,
-            check_val_every_n_epoch=float('inf'),
+            reload_dataloaders_every_n_epochs=1,
+            gradient_clip_val=1.0,
+            max_steps=args.max_steps,
+            # val_check_interval=args.save_step_frequency,
+            check_val_every_n_epoch=1000_000,
+            # val_check_interval=args.save_step_frequency,
+            # terminate_on_nan=True,
+            # check_val_every_n_epoch=float('inf'),
         )
+
         if path.exists(last_checkpoint):
             lm_model = ClozeModel.load_from_checkpoint(last_checkpoint, tokenizer=datamodule.tokenizer)
+            trainer.fit(lm_model, datamodule=datamodule, ckpt_path=last_checkpoint)
         else:
             lm_model = ClozeModel(args, tokenizer=datamodule.tokenizer)
-        trainer.fit(lm_model, datamodule=datamodule)
+            trainer.fit(lm_model, datamodule=datamodule)
+
     else:
         trainer = Trainer.from_argparse_args(
             args,

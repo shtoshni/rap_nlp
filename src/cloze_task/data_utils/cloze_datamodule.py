@@ -92,7 +92,7 @@ class ClozeTaskDataModule(LightningDataModule):
         batch_sampler = SmartBatchSampler(
             SmartSampler(self.dataset_dict['train']), max_token_limit=self.max_token_limit)
         train_loader = torch.utils.data.DataLoader(
-            self.dataset_dict['train'], num_workers=self.num_workers,
+            self.dataset_dict['train'], num_workers=2,
             collate_fn=self.train_data_collator, pin_memory=True, drop_last=False,
             batch_sampler=batch_sampler,
         )

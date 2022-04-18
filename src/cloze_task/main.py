@@ -10,34 +10,40 @@ from cloze_task.experiment import experiment
 
 
 def get_model_name(args, argparser):
-    arg_to_short_names = OrderedDict(
+    common_arg_to_short_names = OrderedDict(
         [("train_size", "ts"), ('model_size', 'size'),
          ("lr_decay", "decay"), ("init_lr", "lr"),
-         ("chain_rep", "cr"), ("coref_len", "clen"),
          ]
     )
 
     str_repr = ""
-    for arg_name, short_name in arg_to_short_names.items():
+    for arg_name, short_name in common_arg_to_short_names.items():
         val = getattr(args, arg_name)
         # if val != argparser.get_default(arg_name):
         if val is not None:
             str_repr += short_name + "_" + str(val).replace('/', '-') + "_"
 
+    if args.chain_prob > 0.0:
+        coreF_arg_to_short_names = OrderedDict(
+            [("chain_rep", "cr"), ("coref_len", "clen"),
+             ("max_mention_len", "mlen")]
+        )
+        for arg_name, short_name in coreF_arg_to_short_names.items():
+            val = getattr(args, arg_name)
+            if val is not None:
+                str_repr += short_name + "_" + str(val).replace('/', '-') + "_"
+        str_repr = str_repr.strip('_')
+
+        if args.include_singletons:
+            str_repr += "_singletons"
+
+        if args.denote_mentions:
+            str_repr += "_ments"
+
+        if args.chain_prob:
+            str_repr += f"_cp_{int(100 * args.chain_prob)}"
+
     str_repr = str_repr.strip('_')
-
-    if args.include_singletons:
-        str_repr += "_singletons"
-
-    if args.denote_mentions:
-        str_repr += "_ments"
-
-    if args.chain_prob:
-        str_repr += f"_cp_{int(100 * args.chain_prob)}"
-
-    if args.oracle:
-        str_repr += '_oracle'
-
     str_repr += f'_seed_{args.seed}'
 
     return f"cloze_{str_repr.strip('_')}"
@@ -74,7 +80,7 @@ if __name__ == '__main__':
     parser.add_argument('--real_batch_size', type=int, default=16)
     parser.add_argument('--max_token_limit', type=int, default=2000)
     parser.add_argument('--patience', type=int, default=3, help='Early stopping patience')
-    parser.add_argument('--save_step_frequency', type=int, default=None, help='Save checkpoints every N steps')
+    # parser.add_argument('--save_step_frequency', type=int, default=None, help='Save checkpoints every N steps')
     parser.add_argument('--num_save_checkpoint', type=int, default=10,
                         help='Max number of times checkpoints is to be saved')
     parser.add_argument('--slurm_id', type=str, default=None, help='Slurm ID')
@@ -86,6 +92,7 @@ if __name__ == '__main__':
     parser.add_argument('--val_size', type=int, default=5200)
     parser.add_argument('--base_model_dir', type=str, default="../models/")
     parser.add_argument('--use_wandb', default=False, action="store_true")
+    parser.add_argument('--slurm_job_mins', type=int, default=235)
     parser.add_argument('--seed', type=int, default=42)
 
     parser = Trainer.add_argparse_args(parser)

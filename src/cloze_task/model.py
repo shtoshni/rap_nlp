@@ -208,6 +208,8 @@ class ClozeModel(LightningModule):
                 f.write(json.dumps(batch_output) + "\n")
 
         print(f"Logs at: {log_file}")
+
+        # print(self.trainer.)
         # return {'val_acc': cloze_acc, 'val_perp': perp}
 
     def test_epoch_end(self, outputs):
