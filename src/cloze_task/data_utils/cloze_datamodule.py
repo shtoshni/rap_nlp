@@ -80,9 +80,15 @@ class ClozeTaskDataModule(LightningDataModule):
         else:
             chain_prob = (self.chain_prob if split == "train" else 0.0)
 
+        max_instances = None
+        if split == 'train':
+            max_instances = self.train_size
+        elif split == 'val':
+            max_instances = self.val_size
+
         return LambadaDataset(
             tokenizer=self.orig_tokenizer, file_path=path.join(self.data_dir, f"{split}.jsonlines"),
-            max_instances=(self.train_size if split == 'train' else self.val_size),
+            max_instances=max_instances,
             chain_prob=chain_prob, chain_rep=self.chain_rep,
             max_mention_len=self.max_mention_len, coref_len=self.coref_len,
             include_singletons=self.include_singletons, split=split, denote_mentions=self.denote_mentions,
@@ -101,7 +107,7 @@ class ClozeTaskDataModule(LightningDataModule):
 
     def val_dataloader(self):
         dev_loader = torch.utils.data.DataLoader(
-            self.dataset_dict['val'], num_workers=1,
+            self.dataset_dict['val'], num_workers=0,
             batch_size=self.batch_size,
             shuffle=False, collate_fn=self.inference_data_collator,
             drop_last=False, pin_memory=True)
