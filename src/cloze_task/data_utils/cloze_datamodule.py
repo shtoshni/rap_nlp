@@ -101,7 +101,8 @@ class ClozeTaskDataModule(LightningDataModule):
 
     def val_dataloader(self):
         dev_loader = torch.utils.data.DataLoader(
-            self.dataset_dict['val'], batch_size=self.batch_size, num_workers=self.num_workers,
+            self.dataset_dict['val'], num_workers=1,
+            batch_size=self.batch_size,
             shuffle=False, collate_fn=self.inference_data_collator,
             drop_last=False, pin_memory=True)
 

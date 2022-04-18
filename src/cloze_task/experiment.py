@@ -5,7 +5,6 @@ import torch
 
 from os import path
 from pytorch_lightning.callbacks import LearningRateMonitor
-from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.loggers import WandbLogger
@@ -78,54 +77,18 @@ def experiment(args):
     # Check whether to train the model or evaluate
     to_train = True
     last_checkpoint = path.join(checkpoint_callback.dirpath, "last.ckpt")
-    # if path.isfile(last_checkpoint):
-    #     print("Resuming training from: ", last_checkpoint)
-    #     # Currently, I don't see a way to early stopping when resuming training
-    #     # Below is a hacky way of checking for early stopping criteria from saved checkpoint
-    #     callbacks_state_dict = torch.load(last_checkpoint, map_location='cpu')['callbacks']
-    #     # print(checkpoint)
-    #     # print(checkpoint.keys())
-    #     # early_stop_callback_state = checkpoint[early_stop_callback]
-    #     # print(early_stop_callback_state)
-    #     early_stop_callback_state = None
-    #     checkpoint_callback_state = None
-    #     print(callbacks_state_dict)
-    #     for callback_obj, callback_state in callbacks_state_dict.items():
-    #         print(callback_obj, type(callback_obj))
-    #         print(callback_state)
-    #         if isinstance(callback_obj, EarlyStopping):
-    #             early_stop_callback_state = callback_state
-    #             print("Hello early stopping")
-    #         if isinstance(callback_obj, ModelCheckpoint):
-    #             checkpoint_callback_state = callback_state
-    #             print("Hello checkpoint")
-    #
-    #     if early_stop_callback_state['wait_count'] >= early_stop_callback_state['patience']:
-    #         print("Early Stopping Triggered on Resumption!")
-    #         to_train = False
-    #         from argparse import Namespace
-    #         checkpoint_callback = Namespace(**checkpoint_callback_state)
 
     if to_train:
-        # args.check_val_every_n_epoch = float('inf')
         trainer = Trainer.from_argparse_args(
             args,
-            # amp_level='O1',
-            # amp_backend='apex',
             gpus=-1,
             precision=args.precision,
-            # weights_save_path=args.save_dir,
-            # resume_from_checkpoint=last_checkpoint,
             logger=logger,
             callbacks=[lr_logger, early_stop_callback, checkpoint_callback, checkpoint_n_steps_callback],
             reload_dataloaders_every_n_epochs=1,
             gradient_clip_val=1.0,
             max_steps=args.max_steps,
-            # val_check_interval=args.save_step_frequency,
             check_val_every_n_epoch=1000_000,
-            # val_check_interval=args.save_step_frequency,
-            # terminate_on_nan=True,
-            # check_val_every_n_epoch=float('inf'),
         )
 
         if path.exists(last_checkpoint):
