@@ -1,3 +1,4 @@
+import os
 import sys
 import math
 import json
@@ -109,6 +110,12 @@ def experiment(args):
 
     lm_model = ClozeModel.load_from_checkpoint(
         checkpoint_path=checkpoint_callback.best_model_path, tokenizer=datamodule.tokenizer)
+
+    doc_encoder_dir = path.join(args.model_dirpath, "huggingface")
+    if not path.exists(doc_encoder_dir):
+        os.makedirs(doc_encoder_dir)
+    lm_model.model.save_pretrained(save_directory=doc_encoder_dir, save_config=True)
+    lm_model.tokenizer.save_pretrained(save_directory=doc_encoder_dir)
 
     print("Best validation model path: ", checkpoint_callback.best_model_path)
     print("Best validation performance:", checkpoint_callback.best_model_score)
