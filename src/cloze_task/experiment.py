@@ -31,7 +31,11 @@ def experiment(args):
     num_train_examples, one_epoch_batches = datamodule.estimate_train_batches()
     effective_batch_size = int(math.ceil(num_train_examples / one_epoch_batches))
 
-    args.accumulate_grad_batches = int(math.ceil(args.real_batch_size / effective_batch_size))
+    # args.accumulate_grad_batches = int(math.ceil(args.real_batch_size / effective_batch_size))
+    # TODO: Remove this
+    if args.accumulate_grad_batches is None:
+        args.accumulate_grad_batches = 1
+
     if args.max_steps < 0:
         if args.train_size is not None:
             args.save_step_frequency = args.train_size // effective_batch_size
@@ -44,8 +48,8 @@ def experiment(args):
         args.save_step_frequency = args.max_steps // args.num_save_checkpoint
 
     print(f"One epoch batches: {one_epoch_batches}, Amortized batch size: {effective_batch_size}")
-    print("Acc. grad steps: %d, Number of training steps: %d" %
-          (args.accumulate_grad_batches, args.max_steps))
+    # print("Acc. grad steps: %d, Number of training steps: %d" %
+    #       (args.accumulate_grad_batches, args.max_steps))
 
     sys.stdout.flush()
 
@@ -78,6 +82,30 @@ def experiment(args):
     # Check whether to train the model or evaluate
     to_train = True
     last_checkpoint = path.join(checkpoint_callback.dirpath, "last.ckpt")
+
+    if path.isfile(last_checkpoint):
+        print("Resuming training from: ", last_checkpoint)
+        # Currently, I don't see a way to early stopping when resuming training
+        # Below is a hacky way of checking for early stopping criteria from saved checkpoint
+        callbacks_state_dict = torch.load(last_checkpoint, map_location='cpu')['callbacks']
+        early_stop_callback_state = None
+        checkpoint_callback_state = None
+        for callback_obj, callback_state in callbacks_state_dict.items():
+            if 'EarlyStopping' in callback_obj:
+                early_stop_callback_state = callback_state
+            if 'ModelCheckpoint' in callback_obj:
+                checkpoint_callback_state = callback_state
+                # print("Hello checkpoint")
+
+        if early_stop_callback_state['wait_count'] >= early_stop_callback_state['patience']:
+            print("Early Stopping Triggered on Resumption!")
+            to_train = False
+            from argparse import Namespace
+            checkpoint_callback = Namespace(**checkpoint_callback_state)
+        print()
+        print(early_stop_callback_state)
+        print(checkpoint_callback)
+        print()
 
     if to_train:
         trainer = Trainer.from_argparse_args(

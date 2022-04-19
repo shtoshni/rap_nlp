@@ -7,7 +7,7 @@ from utils import stopwords
 from pytorch_lightning.core.lightning import LightningModule
 from transformers import GPT2LMHeadModel
 from transformers import get_linear_schedule_with_warmup
-from pytorch_utils.optimization import get_inverse_square_root_decay
+from pytorch_utils.optimization import get_inverse_square_root_decay, get_polynomial_decay_schedule_with_warmup
 import json
 from os import path
 from data_utils.stopwords import stopwords
@@ -31,19 +31,10 @@ class ClozeModel(LightningModule):
         self.model.gradient_checkpointing_enable()
         self.tokenizer = tokenizer
 
-        # self.num_training_steps = args.max_steps
-
         if self.chain_prob:
             self.model.resize_token_embeddings(len(self.tokenizer))
 
         self.token_mask = (torch.arange(self.model.config.vocab_size) >= 50257).float()
-        # bad_words = stopwords + [' ' + stopword for stopword in stopwords]
-        bad_words = [' ' + stopword for stopword in stopwords]
-        self.bad_word_ids = self.tokenizer(bad_words).input_ids
-        # print(self.bad_word_ids)
-        # print([self.tokenizer.convert_ids_to_tokens(bad_word_id) for bad_word_id in self.bad_word_ids])
-
-        # print(self.token_mask)
 
     @staticmethod
     def add_model_specific_args(parent_parser):
@@ -77,13 +68,17 @@ class ClozeModel(LightningModule):
             scheduler = get_inverse_square_root_decay(
                 optimizer, num_warmup_steps=0.1 * self.max_steps,
             )
-
-        else:
+        elif self.lr_decay == "linear":
             scheduler = get_linear_schedule_with_warmup(
                 optimizer, num_warmup_steps=0.1 * self.max_steps,
                 num_training_steps=self.max_steps
             )
-
+        else:
+            scheduler = get_polynomial_decay_schedule_with_warmup(
+                optimizer, num_warmup_steps=0.1 * self.max_steps,
+                num_training_steps=self.max_steps,
+                lr_init=self.init_lr, lr_end=1e-7, power=1.0, last_epoch=-1
+            )
         scheduler = {'scheduler': scheduler, 'interval': 'step'}
         return [optimizer], [scheduler]
 
@@ -104,7 +99,6 @@ class ClozeModel(LightningModule):
             loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1)).item()
 
             # Generate last token
-
             # Function to ignore special added tokens
             def prefix_allowed_tokens_fn(batch_id, input_ids):
                 return list(range(1, 50256))
@@ -166,18 +160,14 @@ class ClozeModel(LightningModule):
         """
         loss = self(batch)
         self.log('loss/step_train_loss', loss.detach())
-        # print(batch["input_ids"].shape[0])
         return {'loss': loss}
 
     def validation_step(self, batch, batch_ids, split="val"):
-        # print(batch)
         output = self(batch, split=split)
-        # print(output)
         return output
 
     def test_step(self, batch, batch_ids, split="test"):
         output = self(batch, split=split)
-        # print(output)
         return output
 
     def validation_epoch_end(self, outputs, split='val'):
@@ -208,9 +198,6 @@ class ClozeModel(LightningModule):
                 f.write(json.dumps(batch_output) + "\n")
 
         print(f"Logs at: {log_file}")
-
-        # print(self.trainer.)
-        # return {'val_acc': cloze_acc, 'val_perp': perp}
 
     def test_epoch_end(self, outputs):
         self.validation_epoch_end(outputs, split='test')

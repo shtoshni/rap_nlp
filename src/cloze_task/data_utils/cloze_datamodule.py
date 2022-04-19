@@ -9,7 +9,8 @@ from cloze_task.data_utils.constants import MENT_START, MENT_END, COREF_START, C
 
 
 class ClozeTaskDataModule(LightningDataModule):
-    def __init__(self,  data_dir=None, batch_size=8, max_token_limit=1000, num_workers=1,
+    def __init__(self,  data_dir=None, train_batch_size=16, batch_size=1,
+                 max_token_limit=1000, num_workers=1,
                  train_size=1e6, val_size=500, model_size='base',
                  chain_prob=0.0, oracle=False,  chain_rep='canonical',
                  coref_len=None, max_mention_len=None,
@@ -36,6 +37,7 @@ class ClozeTaskDataModule(LightningDataModule):
         self.include_singletons = include_singletons
 
         self.batch_size = batch_size
+        self.train_batch_size = train_batch_size
         self.max_token_limit = max_token_limit
         self.num_workers = num_workers
 
@@ -96,7 +98,7 @@ class ClozeTaskDataModule(LightningDataModule):
 
     def train_dataloader(self):
         batch_sampler = SmartBatchSampler(
-            SmartSampler(self.dataset_dict['train']), max_token_limit=self.max_token_limit)
+            SmartSampler(self.dataset_dict['train']), max_token_limit=self.max_token_limit, batch_size=self.train_batch_size)
         train_loader = torch.utils.data.DataLoader(
             self.dataset_dict['train'], num_workers=2,
             collate_fn=self.train_data_collator, pin_memory=True, drop_last=False,

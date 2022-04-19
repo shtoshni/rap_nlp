@@ -27,9 +27,10 @@ class SmartSampler:
 
 
 class SmartBatchSampler:
-    def __init__(self, sampler: SmartSampler, max_token_limit: int) -> None:
+    def __init__(self, sampler: SmartSampler, max_token_limit: int, batch_size: int) -> None:
         self.sampler = sampler
         self.max_token_limit = max_token_limit
+        self.batch_size = batch_size
 
     def __iter__(self):
         batch = []
@@ -38,7 +39,7 @@ class SmartBatchSampler:
             # expected_rap_tokens = int(self.rap_prob * (example_len // 2))
             # instance_len = example_len + expected_rap_tokens
             instance_len = example_len
-            if (num_tokens + instance_len) > self.max_token_limit:
+            if (num_tokens + instance_len) > self.max_token_limit or len(batch) >= self.batch_size:
                 yield batch
                 batch = [idx]
                 num_tokens = instance_len

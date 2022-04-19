@@ -9,6 +9,7 @@ logger = logging.getLogger()
 def load_coref_model(model_loc, source_loc):
     import sys
     sys.path.append(source_loc)
+    print(sys.path)
 
     from inference.model_inference import Inference
 

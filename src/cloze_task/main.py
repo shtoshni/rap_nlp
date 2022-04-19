@@ -77,7 +77,7 @@ if __name__ == '__main__':
     parser = ClozeModel.add_model_specific_args(parser)
     # Training args
     parser.add_argument('--batch_size', type=int, default=1)
-    parser.add_argument('--real_batch_size', type=int, default=16)
+    parser.add_argument('--train_batch_size', type=int, default=16)
     parser.add_argument('--max_token_limit', type=int, default=2000)
     parser.add_argument('--patience', type=int, default=3, help='Early stopping patience')
     # parser.add_argument('--save_step_frequency', type=int, default=None, help='Save checkpoints every N steps')
@@ -85,7 +85,7 @@ if __name__ == '__main__':
                         help='Max number of times checkpoints is to be saved')
     parser.add_argument('--slurm_id', type=str, default=None, help='Slurm ID')
     parser.add_argument('--init_lr', type=float, default=5e-5)
-    parser.add_argument('--lr_decay', default="square_root", type=str, choices=["linear", "square_root"])
+    parser.add_argument('--lr_decay', default="polynomial", type=str, choices=["linear", "square_root", "polynomial"])
     parser.add_argument('--num_workers', type=int, default=2)
     parser.add_argument('--data_dir', type=str, default='/home/shtoshni/Research/rap_nlp/data/lambada/coref_data')
     parser.add_argument('--train_size', type=int, default=500000)
