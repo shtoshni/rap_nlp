@@ -5,6 +5,7 @@ from torch.utils.data.dataset import Dataset
 import numpy as np
 import json
 from collections import defaultdict
+import random
 from cloze_task.data_utils.constants import MENT_END, MENT_START, COREF_START, COREF_END
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ class LambadaDataset(Dataset):
         with open(file_path, encoding="utf-8") as f:
             self.lines = [line for line in f.read().splitlines() if (len(line) > 0 and not line.isspace())]
             if max_instances:
+                random.shuffle(self.lines)
                 self.lines = self.lines[:max_instances]
 
         batch_data = self.process_data(self.lines)
