@@ -131,21 +131,22 @@ class LambadaDataset(Dataset):
                             # self.coref_ment_lens.append(len(clusters_seen[cluster_idx]))
 
                             if self.coref_len is None:
-                                if self.reduce_redundancy:
-                                    # if len(clusters_seen[cluster_idx]) > 2:
-                                    #     mod_input_ids.extend(
-                                    #         [clusters_seen[cluster_idx][0], clusters_seen[cluster_idx][-1]])
-                                    # else:
-                                    # if len(clusters_seen[cluster_idx]) > (token_idx - ment_start + 1):
-                                    mod_input_ids.extend(clusters_seen[cluster_idx])
-                                    mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_END))
-                                else:
-                                    mod_input_ids.extend(clusters_seen[cluster_idx])
-                                    mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_END))
+                                # if self.reduce_redundancy:
+                                #     # if len(clusters_seen[cluster_idx]) > 2:
+                                #     #     mod_input_ids.extend(
+                                #     #         [clusters_seen[cluster_idx][0], clusters_seen[cluster_idx][-1]])
+                                #     # else:
+                                #     # if len(clusters_seen[cluster_idx]) > (token_idx - ment_start + 1):
+                                #     mod_input_ids.extend(clusters_seen[cluster_idx])
+                                #     mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_END))
+                                # else:
+                                mod_input_ids.extend(clusters_seen[cluster_idx])
+                                # mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_END))
                             else:
                                 mod_input_ids.extend(clusters_seen[cluster_idx][:self.coref_len])
-                                if not self.reduce_redundancy:
-                                    mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_END))
+                                # if not self.reduce_redundancy:
+
+                            mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_END))
 
                         if self.chain_rep == 'antecedent':
                             # Update cluster representation
