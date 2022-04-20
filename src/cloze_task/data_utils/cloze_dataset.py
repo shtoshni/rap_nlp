@@ -124,7 +124,7 @@ class LambadaDataset(Dataset):
                         if chosen:
                             if self.reduce_redundancy:
                                 # Don't add coref span if it's the same as the mention span
-                                if len(clusters_seen[cluster_idx]) > (token_idx - ment_start + 1):
+                                if len(clusters_seen[cluster_idx]) <= (token_idx - ment_start + 1):
                                     continue
 
                             mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_START))
