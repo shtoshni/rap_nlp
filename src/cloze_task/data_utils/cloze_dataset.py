@@ -84,47 +84,49 @@ class LambadaDataset(Dataset):
         if not self.include_singletons:
             clusters_picked = [cluster for cluster in coref_clusters if len(cluster) > 1]
 
-        mentions_chosen = []
+        all_mentions = []
         for idx, cluster in enumerate(clusters_picked):
             for (ment_start, ment_end), _ in cluster:
                 if self.max_mention_len is None or (ment_end - ment_start + 1) <= self.max_mention_len:
-                    if random.random() < self.ment_prob:
-                        mentions_chosen.append(((ment_start, ment_end), idx))
+                    all_mentions.append(((ment_start, ment_end), idx, random.random() < self.ment_prob))
 
         token_start_to_cluster_idx = defaultdict(list)
         token_end_to_cluster_idx = defaultdict(list)
 
-        if mentions_chosen:
+        if all_mentions:
             # Sort mentions by their positions in the document
-            mentions_chosen = sorted(mentions_chosen, key=lambda x: x[0][0] - 1e-5 * x[0][1])
+            all_mentions = sorted(all_mentions, key=lambda x: x[0][0] - 1e-5 * x[0][1])
 
-            for (ment_start, ment_end), cluster_idx in mentions_chosen:
-                token_start_to_cluster_idx[ment_start].append(cluster_idx)
-                token_end_to_cluster_idx[ment_end].append((cluster_idx, ment_start))
+            for (ment_start, ment_end), cluster_idx, chosen in all_mentions:
+                token_start_to_cluster_idx[ment_start].append((cluster_idx, chosen))
+                token_end_to_cluster_idx[ment_end].append((cluster_idx, ment_start, chosen))
 
         clusters_seen = dict()
         mod_input_ids = []
         for token_idx, input_id in enumerate(input_ids):
             if token_idx in token_start_to_cluster_idx:
-                for cluster_idx in token_start_to_cluster_idx[token_idx]:
+                for cluster_idx, chosen in token_start_to_cluster_idx[token_idx]:
                     if (self.denote_mentions and cluster_idx in clusters_seen) or self.include_singletons:
                         # Head of the chain and singletons are represented in the same way
-                        mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(MENT_START))
+                        if chosen:
+                            mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(MENT_START))
 
             mod_input_ids.append(input_id)
             if token_idx in token_end_to_cluster_idx:
-                for cluster_idx, ment_start in token_end_to_cluster_idx[token_idx]:
+                for cluster_idx, ment_start, chosen in token_end_to_cluster_idx[token_idx]:
                     if (self.denote_mentions and cluster_idx in clusters_seen) or self.include_singletons:
                         # Head of the chain and singletons are represented in the same way
-                        mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(MENT_END))
+                        if chosen:
+                            mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(MENT_END))
                     if cluster_idx in clusters_seen:
-                        mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_START))
-                        if self.coref_len is None:
-                            mod_input_ids.extend(clusters_seen[cluster_idx])
-                        else:
-                            mod_input_ids.extend(clusters_seen[cluster_idx][:self.coref_len])
+                        if chosen:
+                            mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_START))
+                            if self.coref_len is None:
+                                mod_input_ids.extend(clusters_seen[cluster_idx])
+                            else:
+                                mod_input_ids.extend(clusters_seen[cluster_idx][:self.coref_len])
 
-                        mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_END))
+                            mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_END))
                         if self.chain_rep == 'antecedent':
                             # Update cluster representation
                             clusters_seen[cluster_idx] = input_ids[ment_start: token_idx + 1]
