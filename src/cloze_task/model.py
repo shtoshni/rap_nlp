@@ -94,14 +94,14 @@ class ClozeModel(LightningModule):
         else:
             # Perplexity calculation
             perp_batch = batch["perp"]
-            num_terms = torch.sum(perp_batch["input_ids"] != self.tokenizer.pad_token_id).item()
+            # num_terms = torch.sum(perp_batch["input_ids"] != self.tokenizer.pad_token_id).item()
 
             lm_logits = self.model(input_ids=perp_batch['input_ids'], return_dict=True)['logits']
             self.token_mask = self.token_mask.to(lm_logits.device)
             lm_logits = lm_logits * (1 - self.token_mask) + self.token_mask * (-1e10)
             shift_logits = lm_logits[..., :-1, :].contiguous()
             shift_labels = perp_batch['labels'][..., 1:].contiguous()
-            loss_fct = torch.nn.CrossEntropyLoss()
+            loss_fct = torch.nn.CrossEntropyLoss(reduce='sum')
             loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1)).item()
 
             # Generate last token
@@ -157,7 +157,6 @@ class ClozeModel(LightningModule):
 
                 # Perplexity output
                 'loss': loss,
-                'num_terms': num_terms,
             }
 
     def training_step(self, batch, batch_ids):
@@ -188,9 +187,10 @@ class ClozeModel(LightningModule):
             total = sum([batch_output['total'] for batch_output in outputs])
             cloze_acc = total_corr/total
 
-            perp_num = sum([batch_output['loss'] * batch_output['num_terms'] for batch_output in outputs])
-            perp_den = sum([batch_output['num_terms'] for batch_output in outputs])
-            perp = perp_num/perp_den
+            perp_num = sum([batch_output['loss'] for batch_output in outputs])
+            # perp_den = sum([batch_output['num_terms'] for batch_output in outputs])
+            # perp_den =
+            perp = perp_num/len(outputs)
             perp = math.exp(perp)
 
             if len(outputs) >= 10:
