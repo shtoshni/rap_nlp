@@ -33,7 +33,7 @@ class LambadaDataset(Dataset):
         with open(file_path, encoding="utf-8") as f:
             self.lines = [line for line in f.read().splitlines() if (len(line) > 0 and not line.isspace())]
             if max_instances:
-                random.shuffle(self.lines)
+                # random.shuffle(self.lines)
                 self.lines = self.lines[:max_instances]
 
         batch_data = self.process_data(self.lines)
@@ -132,12 +132,13 @@ class LambadaDataset(Dataset):
 
                             if self.coref_len is None:
                                 if self.reduce_redundancy:
-                                    if len(clusters_seen[cluster_idx]) > 2:
-                                        mod_input_ids.extend(
-                                            [clusters_seen[cluster_idx][0], clusters_seen[cluster_idx][-1]])
-                                    else:
+                                    # if len(clusters_seen[cluster_idx]) > 2:
+                                    #     mod_input_ids.extend(
+                                    #         [clusters_seen[cluster_idx][0], clusters_seen[cluster_idx][-1]])
+                                    # else:
+                                    if len(clusters_seen[cluster_idx]) > (token_idx - ment_start + 1):
                                         mod_input_ids.extend(clusters_seen[cluster_idx])
-
+                                        mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_END))
                                 else:
                                     mod_input_ids.extend(clusters_seen[cluster_idx])
                                     mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_END))
@@ -152,7 +153,7 @@ class LambadaDataset(Dataset):
                     else:
                         clusters_seen[cluster_idx] = input_ids[ment_start: token_idx + 1]
 
-        if random.random() < 0.0001:
+        if random.random() < 1.0:#0.001:
             print(self.tokenizer.convert_tokens_to_string(self.tokenizer.convert_ids_to_tokens(mod_input_ids)))
         return mod_input_ids
 
