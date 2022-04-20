@@ -31,7 +31,7 @@ class ClozeModel(LightningModule):
         self.model.gradient_checkpointing_enable()
         self.tokenizer = tokenizer
 
-        if self.chain_prob:
+        if self.ment_prob:
             self.model.resize_token_embeddings(len(self.tokenizer))
 
         self.token_mask = (torch.arange(self.model.config.vocab_size) >= 50257).float()
@@ -44,7 +44,7 @@ class ClozeModel(LightningModule):
                             choices=['base', 'medium', 'large'],
                             help='GPT2 model size.')
         # Chain probability
-        parser.add_argument('--chain_prob', type=float, default=0.0)
+        parser.add_argument('--ment_prob', type=float, default=0.0)
         # Chain representation
         parser.add_argument('--chain_rep', type=str, default='canonical', choices=['canonical', 'antecedent'])
         # Denote mentions

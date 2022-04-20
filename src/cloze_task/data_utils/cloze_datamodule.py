@@ -12,7 +12,7 @@ class ClozeTaskDataModule(LightningDataModule):
     def __init__(self,  data_dir=None, train_batch_size=16, batch_size=1,
                  max_token_limit=1000, num_workers=1,
                  train_size=1e6, val_size=500, model_size='base',
-                 chain_prob=0.0, oracle=False,  chain_rep='canonical',
+                 ment_prob=0.0, oracle=False,  chain_rep='canonical',
                  coref_len=None, max_mention_len=None,
                  include_singletons=False, denote_mentions=False,
                  **kwargs):
@@ -25,10 +25,10 @@ class ClozeTaskDataModule(LightningDataModule):
         self.val_size = val_size
 
         # Additional model settings
-        self.chain_prob = chain_prob
+        self.ment_prob = ment_prob
         self.oracle = oracle
         if self.oracle:
-            self.chain_prob = 1.00
+            self.ment_prob = 1.00
 
         self.chain_rep = chain_rep
         self.max_mention_len = max_mention_len
@@ -48,7 +48,7 @@ class ClozeTaskDataModule(LightningDataModule):
         self.tokenizer.pad_token = self.tokenizer.eos_token
         # self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
 
-        if chain_prob:
+        if ment_prob:
             special_tokens = [MENT_START, MENT_END, COREF_START, COREF_END]
             self.orig_tokenizer.add_special_tokens({
                 'additional_special_tokens': special_tokens,
@@ -78,9 +78,9 @@ class ClozeTaskDataModule(LightningDataModule):
 
     def _load_dataset(self, split="train"):
         if self.oracle:
-            chain_prob = 1.00
+            ment_prob = 1.00
         else:
-            chain_prob = (self.chain_prob if split == "train" else 0.0)
+            ment_prob = (self.ment_prob if split == "train" else 0.0)
 
         max_instances = None
         if split == 'train':
@@ -91,7 +91,7 @@ class ClozeTaskDataModule(LightningDataModule):
         return LambadaDataset(
             tokenizer=self.orig_tokenizer, file_path=path.join(self.data_dir, f"{split}.jsonlines"),
             max_instances=max_instances,
-            chain_prob=chain_prob, chain_rep=self.chain_rep,
+            ment_prob=ment_prob, chain_rep=self.chain_rep,
             max_mention_len=self.max_mention_len, coref_len=self.coref_len,
             include_singletons=self.include_singletons, split=split, denote_mentions=self.denote_mentions,
         )

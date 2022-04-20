@@ -23,7 +23,7 @@ def get_model_name(args, argparser):
         if val is not None:
             str_repr += short_name + "_" + str(val).replace('/', '-') + "_"
 
-    if args.chain_prob > 0.0:
+    if args.ment_prob > 0.0:
         coreF_arg_to_short_names = OrderedDict(
             [("chain_rep", "cr"), ("coref_len", "clen"),
              ("max_mention_len", "mlen")]
@@ -40,8 +40,8 @@ def get_model_name(args, argparser):
         if args.denote_mentions:
             str_repr += "_ments"
 
-        if args.chain_prob:
-            str_repr += f"_cp_{int(100 * args.chain_prob)}"
+        if args.ment_prob:
+            str_repr += f"_mp_{int(100 * args.ment_prob)}"
 
     str_repr = str_repr.strip('_')
     str_repr += f'_seed_{args.seed}'
@@ -52,7 +52,7 @@ def get_model_name(args, argparser):
 def main(args, parser):
     seed_everything(args.seed)
 
-    args.chain_prob = 1.0 if args.oracle else args.chain_prob
+    args.ment_prob = 1.0 if args.oracle else args.ment_prob
     # max_memory = int(math.ceil(torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)))
     # if max_memory >= 24:
     #     # For GPUs with memory >= 24 GB, double the token limit

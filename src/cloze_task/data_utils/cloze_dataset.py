@@ -13,12 +13,12 @@ logger = logging.getLogger(__name__)
 
 class LambadaDataset(Dataset):
 
-    def __init__(self, tokenizer, file_path, max_instances=None, chain_prob=0.0, chain_rep='canonical',
+    def __init__(self, tokenizer, file_path, max_instances=None, ment_prob=0.0, chain_rep='canonical',
                  max_mention_len=None, coref_len=None, denote_mentions=False, include_singletons=False,
                  split="train"):
         # print(file_path)
         assert os.path.isfile(file_path)
-        self.chain_prob = chain_prob
+        self.ment_prob = ment_prob
         self.chain_rep = chain_rep
 
         self.max_mention_len = max_mention_len
@@ -65,7 +65,7 @@ class LambadaDataset(Dataset):
     def __getitem__(self, i):
         output_dict = {}
 
-        if self.chain_prob:
+        if self.ment_prob:
             input_ids = self._process_instance(self.input_ids[i], self.coref_clusters[i])
         else:
             input_ids = self.input_ids[i]
@@ -79,15 +79,17 @@ class LambadaDataset(Dataset):
         return output_dict
 
     def _process_instance(self, input_ids, coref_clusters):
-        use_coref_chain_list = np.random.choice([0, 1], size=(len(coref_clusters),),
-                                                p=[1 - self.chain_prob, self.chain_prob])
-        clusters_picked = [cluster for idx, cluster in enumerate(coref_clusters) if use_coref_chain_list[idx]]
+
+        clusters_picked = coref_clusters
+        if not self.include_singletons:
+            clusters_picked = [cluster for cluster in coref_clusters if len(cluster) > 1]
 
         mentions_chosen = []
         for idx, cluster in enumerate(clusters_picked):
             for (ment_start, ment_end), _ in cluster:
                 if self.max_mention_len is None or (ment_end - ment_start + 1) <= self.max_mention_len:
-                    mentions_chosen.append(((ment_start, ment_end), idx))
+                    if random.random() < self.ment_prob:
+                        mentions_chosen.append(((ment_start, ment_end), idx))
 
         token_start_to_cluster_idx = defaultdict(list)
         token_end_to_cluster_idx = defaultdict(list)
@@ -129,6 +131,7 @@ class LambadaDataset(Dataset):
                     else:
                         clusters_seen[cluster_idx] = input_ids[ment_start: token_idx + 1]
 
-        # print(self.tokenizer.convert_tokens_to_string(self.tokenizer.convert_ids_to_tokens(mod_input_ids)))
+        if random.random() < 0.1:
+            print(self.tokenizer.convert_tokens_to_string(self.tokenizer.convert_ids_to_tokens(mod_input_ids)))
         return mod_input_ids
 
