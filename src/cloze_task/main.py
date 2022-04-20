@@ -40,6 +40,9 @@ def get_model_name(args, argparser):
         if args.denote_mentions:
             str_repr += "_ments"
 
+        if args.reduce_redundancy:
+            str_repr += "_red"
+
         if args.ment_prob:
             str_repr += f"_mp_{int(100 * args.ment_prob)}"
 

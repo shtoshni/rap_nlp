@@ -14,7 +14,7 @@ class ClozeTaskDataModule(LightningDataModule):
                  train_size=1e6, val_size=500, model_size='base',
                  ment_prob=0.0, oracle=False,  chain_rep='canonical',
                  coref_len=None, max_mention_len=None,
-                 include_singletons=False, denote_mentions=False,
+                 include_singletons=False, denote_mentions=False, reduce_redundancy=False,
                  **kwargs):
         super().__init__()
 
@@ -35,6 +35,7 @@ class ClozeTaskDataModule(LightningDataModule):
         self.coref_len = coref_len
         self.denote_mentions = denote_mentions
         self.include_singletons = include_singletons
+        self.reduce_redundancy = reduce_redundancy
 
         self.batch_size = batch_size
         self.train_batch_size = train_batch_size
@@ -63,7 +64,7 @@ class ClozeTaskDataModule(LightningDataModule):
             tokenizer=self.tokenizer, training=False)
 
         self.dataset_dict = {}
-        for split in ["train", "val", "test"]:
+        for split in ["val", "test"]:
             self.dataset_dict[split] = self._load_dataset(split)
 
     def estimate_train_batches(self):
@@ -94,9 +95,13 @@ class ClozeTaskDataModule(LightningDataModule):
             ment_prob=ment_prob, chain_rep=self.chain_rep,
             max_mention_len=self.max_mention_len, coref_len=self.coref_len,
             include_singletons=self.include_singletons, split=split, denote_mentions=self.denote_mentions,
+            reduce_redundancy=self.reduce_redundancy,
         )
 
     def train_dataloader(self):
+        # Load train dataset everytime
+        # There's randomization in loading train data
+        self.dataset_dict["train"] = self._load_dataset("train")
         batch_sampler = SmartBatchSampler(
             SmartSampler(self.dataset_dict['train']), max_token_limit=self.max_token_limit, batch_size=self.train_batch_size)
         train_loader = torch.utils.data.DataLoader(

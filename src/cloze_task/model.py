@@ -54,6 +54,9 @@ class ClozeModel(LightningModule):
         # Coref length
         parser.add_argument('--coref_len', type=int, default=None, help="Max length of coref mention.")
 
+        parser.add_argument('--reduce_redundancy', default=False, action="store_true",
+                            help="Try to reduce redundancy in coref.")
+
         # Include singletons
         parser.add_argument('--include_singletons', default=False, action="store_true",
                             help="Whether to represent singletons in text or not.")

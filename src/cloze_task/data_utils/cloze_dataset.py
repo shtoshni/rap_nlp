@@ -15,7 +15,7 @@ class LambadaDataset(Dataset):
 
     def __init__(self, tokenizer, file_path, max_instances=None, ment_prob=0.0, chain_rep='canonical',
                  max_mention_len=None, coref_len=None, denote_mentions=False, include_singletons=False,
-                 split="train"):
+                 split="train", reduce_redundancy=False):
         # print(file_path)
         assert os.path.isfile(file_path)
         self.ment_prob = ment_prob
@@ -26,6 +26,7 @@ class LambadaDataset(Dataset):
 
         self.denote_mentions = denote_mentions
         self.include_singletons = include_singletons
+        self.reduce_redundancy = reduce_redundancy
         self.tokenizer = tokenizer
         self.split = split
 
@@ -39,6 +40,8 @@ class LambadaDataset(Dataset):
         self.input_ids = batch_data["input_ids"]
         self.coref_clusters = batch_data["coref_clusters"]
         self.output_ids = batch_data["output_ids"]
+
+        # self.coref_ment_lens = []
 
     # @staticmethod
     def process_data(self, lines):
@@ -79,7 +82,6 @@ class LambadaDataset(Dataset):
         return output_dict
 
     def _process_instance(self, input_ids, coref_clusters):
-
         clusters_picked = coref_clusters
         if not self.include_singletons:
             clusters_picked = [cluster for cluster in coref_clusters if len(cluster) > 1]
@@ -121,19 +123,31 @@ class LambadaDataset(Dataset):
                     if cluster_idx in clusters_seen:
                         if chosen:
                             mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_START))
+                            # self.coref_ment_lens.append(len(clusters_seen[cluster_idx]))
+
                             if self.coref_len is None:
-                                mod_input_ids.extend(clusters_seen[cluster_idx])
+                                if self.reduce_redundancy:
+                                    if len(clusters_seen[cluster_idx]) > 2:
+                                        mod_input_ids.extend(
+                                            [clusters_seen[cluster_idx][0], clusters_seen[cluster_idx][-1]])
+                                    else:
+                                        mod_input_ids.extend(clusters_seen[cluster_idx])
+
+                                else:
+                                    mod_input_ids.extend(clusters_seen[cluster_idx])
+                                    mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_END))
                             else:
                                 mod_input_ids.extend(clusters_seen[cluster_idx][:self.coref_len])
+                                if not self.reduce_redundancy:
+                                    mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_END))
 
-                            mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_END))
                         if self.chain_rep == 'antecedent':
                             # Update cluster representation
                             clusters_seen[cluster_idx] = input_ids[ment_start: token_idx + 1]
                     else:
                         clusters_seen[cluster_idx] = input_ids[ment_start: token_idx + 1]
 
-        # if random.random() < 0.1:
+        # if random.random() < 0.001:
         #     print(self.tokenizer.convert_tokens_to_string(self.tokenizer.convert_ids_to_tokens(mod_input_ids)))
         return mod_input_ids
 
