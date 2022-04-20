@@ -170,7 +170,7 @@ class ClozeModel(LightningModule):
         return output
 
     def test_step(self, batch, batch_ids, split="test"):
-        # split = "val" if self.final_eval_val else "test"
+        split = "val" if self.final_eval_val else "test"
         output = self(batch, split=split)
         return output
 
@@ -204,7 +204,7 @@ class ClozeModel(LightningModule):
         print(f"Logs at: {log_file}")
 
     def test_epoch_end(self, outputs):
-        # split = "val" if self.final_eval_val else "test"
-        self.validation_epoch_end(outputs, split="test")
+        split = "val" if self.final_eval_val else "test"
+        self.validation_epoch_end(outputs, split=split)
 
 
