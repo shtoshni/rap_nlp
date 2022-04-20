@@ -44,6 +44,9 @@ def get_model_name(args, argparser):
         if args.reduce_redundancy:
             str_repr += "_red"
 
+        if args.use_parenthesis:
+            str_repr += "_up"
+
         if args.ment_prob:
             str_repr += f"_mp_{int(100 * args.ment_prob)}"
 

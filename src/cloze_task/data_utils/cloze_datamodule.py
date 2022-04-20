@@ -5,7 +5,7 @@ from pytorch_lightning.core.datamodule import LightningDataModule
 from cloze_task.data_utils.cloze_dataset import LambadaDataset
 from cloze_task.data_utils.datasampler import SmartBatchSampler, SmartSampler
 from cloze_task.data_utils.data_collator import DataCollatorForClozeGeneration
-from cloze_task.data_utils.constants import MENT_START, MENT_END, COREF_START, COREF_END
+from cloze_task.data_utils.constants import TOKENS
 
 
 class ClozeTaskDataModule(LightningDataModule):
@@ -13,7 +13,7 @@ class ClozeTaskDataModule(LightningDataModule):
                  max_token_limit=1000, num_workers=1,
                  train_size=1e6, val_size=500, test_size=None, final_eval_val=False,
                  #model_size='base',
-                 ment_prob=0.0, oracle=False,  chain_rep='canonical',
+                 ment_prob=0.0, oracle=False,  chain_rep='canonical', use_parenthesis=False,
                  coref_len=None, max_mention_len=None,
                  include_singletons=False, denote_mentions=False, reduce_redundancy=False,
                  **kwargs):
@@ -34,6 +34,8 @@ class ClozeTaskDataModule(LightningDataModule):
             self.ment_prob = 1.00
 
         self.chain_rep = chain_rep
+        self.use_parenthesis = use_parenthesis
+
         self.max_mention_len = max_mention_len
         self.coref_len = coref_len
         self.denote_mentions = denote_mentions
@@ -52,8 +54,8 @@ class ClozeTaskDataModule(LightningDataModule):
         self.tokenizer.pad_token = self.tokenizer.eos_token
         # self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
 
-        if ment_prob:
-            special_tokens = [MENT_START, MENT_END, COREF_START, COREF_END]
+        if ment_prob and (not self.use_parenthesis):
+            special_tokens = list(sorted(TOKENS.values()))
             self.orig_tokenizer.add_special_tokens({
                 'additional_special_tokens': special_tokens,
             })
@@ -97,7 +99,7 @@ class ClozeTaskDataModule(LightningDataModule):
         return LambadaDataset(
             tokenizer=self.orig_tokenizer, file_path=path.join(self.data_dir, f"{split}.jsonlines"),
             max_instances=max_instances,
-            ment_prob=ment_prob, chain_rep=self.chain_rep,
+            ment_prob=ment_prob, chain_rep=self.chain_rep, use_parenthesis=self.use_parenthesis,
             max_mention_len=self.max_mention_len, coref_len=self.coref_len,
             include_singletons=self.include_singletons, split=split, denote_mentions=self.denote_mentions,
             reduce_redundancy=self.reduce_redundancy,

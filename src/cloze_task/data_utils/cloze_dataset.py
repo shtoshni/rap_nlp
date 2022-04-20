@@ -6,20 +6,24 @@ import numpy as np
 import json
 from collections import defaultdict
 import random
-from cloze_task.data_utils.constants import MENT_END, MENT_START, COREF_START, COREF_END
+from cloze_task.data_utils.constants import TOKENS, PAREN_TOKENS
 
 logger = logging.getLogger(__name__)
 
 
 class LambadaDataset(Dataset):
 
-    def __init__(self, tokenizer, file_path, max_instances=None, ment_prob=0.0, chain_rep='canonical',
+    def __init__(self, tokenizer, file_path, max_instances=None, ment_prob=0.0,
+                 chain_rep='canonical', use_parenthesis=False,
                  max_mention_len=None, coref_len=None, denote_mentions=False, include_singletons=False,
                  split="train", reduce_redundancy=False):
         # print(file_path)
         assert os.path.isfile(file_path)
         self.ment_prob = ment_prob
+
         self.chain_rep = chain_rep
+        self.use_parenthesis = use_parenthesis
+        self.markers = PAREN_TOKENS if self.use_parenthesis else TOKENS
 
         self.max_mention_len = max_mention_len
         self.coref_len = coref_len
@@ -111,7 +115,7 @@ class LambadaDataset(Dataset):
                     if (self.denote_mentions and cluster_idx in clusters_seen) or self.include_singletons:
                         # Head of the chain and singletons are represented in the same way
                         if chosen:
-                            mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(MENT_START))
+                            mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(self.markers['MENT_START']))
 
             mod_input_ids.append(input_id)
             if token_idx in token_end_to_cluster_idx:
@@ -119,7 +123,7 @@ class LambadaDataset(Dataset):
                     if (self.denote_mentions and cluster_idx in clusters_seen) or self.include_singletons:
                         # Head of the chain and singletons are represented in the same way
                         if chosen:
-                            mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(MENT_END))
+                            mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(self.markers['MENT_END']))
                     if cluster_idx in clusters_seen:
                         if chosen:
                             if self.reduce_redundancy:
@@ -127,7 +131,7 @@ class LambadaDataset(Dataset):
                                 if len(clusters_seen[cluster_idx]) <= (token_idx - ment_start + 1):
                                     continue
 
-                            mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_START))
+                            mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(self.markers['COREF_START']))
                             # self.coref_ment_lens.append(len(clusters_seen[cluster_idx]))
 
                             if self.coref_len is None:
@@ -146,7 +150,7 @@ class LambadaDataset(Dataset):
                                 mod_input_ids.extend(clusters_seen[cluster_idx][:self.coref_len])
                                 # if not self.reduce_redundancy:
 
-                            mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(COREF_END))
+                            mod_input_ids.append(self.tokenizer.convert_tokens_to_ids(self.markers['COREF_END']))
 
                         if self.chain_rep == 'antecedent':
                             # Update cluster representation
@@ -154,7 +158,7 @@ class LambadaDataset(Dataset):
                     else:
                         clusters_seen[cluster_idx] = input_ids[ment_start: token_idx + 1]
 
-        if random.random() < 1.0:#0.001:
+        if random.random() < 0.001:
             print(self.tokenizer.convert_tokens_to_string(self.tokenizer.convert_ids_to_tokens(mod_input_ids)))
         return mod_input_ids
 

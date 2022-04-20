@@ -47,6 +47,9 @@ class ClozeModel(LightningModule):
         parser.add_argument('--ment_prob', type=float, default=0.0)
         # Chain representation
         parser.add_argument('--chain_rep', type=str, default='canonical', choices=['canonical', 'antecedent'])
+        parser.add_argument('--use_parenthesis', default=False, action="store_true",
+                            help="Use parenthesis to represent coreference stuff.")
+
         # Denote mentions
         parser.add_argument('--denote_mentions', default=False, action="store_true",
                             help="Whether to represent mentions in text or not.")
