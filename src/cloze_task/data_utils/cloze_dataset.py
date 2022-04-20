@@ -131,7 +131,7 @@ class LambadaDataset(Dataset):
                     else:
                         clusters_seen[cluster_idx] = input_ids[ment_start: token_idx + 1]
 
-        if random.random() < 0.1:
-            print(self.tokenizer.convert_tokens_to_string(self.tokenizer.convert_ids_to_tokens(mod_input_ids)))
+        # if random.random() < 0.1:
+        #     print(self.tokenizer.convert_tokens_to_string(self.tokenizer.convert_ids_to_tokens(mod_input_ids)))
         return mod_input_ids
 
