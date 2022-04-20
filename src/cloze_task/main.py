@@ -13,6 +13,7 @@ def get_model_name(args, argparser):
     common_arg_to_short_names = OrderedDict(
         [("train_size", "ts"), ('model_size', 'size'),
          ("lr_decay", "decay"), ("init_lr", "lr"),
+         ("accumulate_grad_batches", "agb"),
          ]
     )
 
@@ -93,6 +94,10 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir', type=str, default='/home/shtoshni/Research/rap_nlp/data/lambada/coref_data')
     parser.add_argument('--train_size', type=int, default=500000)
     parser.add_argument('--val_size', type=int, default=2000)
+    parser.add_argument('--test_size', type=int, default=None)
+    parser.add_argument('--final_eval_val', default=False, action="store_true",
+                        help="Evaluate on validation instead of test")
+
     parser.add_argument('--base_model_dir', type=str, default="../models/")
     parser.add_argument('--use_wandb', default=False, action="store_true")
     parser.add_argument('--slurm_job_mins', type=int, default=230)

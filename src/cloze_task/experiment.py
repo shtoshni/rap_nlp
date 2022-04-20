@@ -56,6 +56,8 @@ def experiment(args):
     # Callbacks
     lr_logger = LearningRateMonitor()
     args.model_dirpath = path.join(args.save_dir, args.model_name)
+    if not path.exists(args.model_dirpath):
+        os.makedirs(args.model_dirpath)
 
     checkpoint_callback = ModelCheckpoint(
         verbose=True,
@@ -136,8 +138,11 @@ def experiment(args):
             logger=logger,
         )
 
-    lm_model = ClozeModel.load_from_checkpoint(
-        checkpoint_path=checkpoint_callback.best_model_path, tokenizer=datamodule.tokenizer)
+    if args.max_steps:
+        lm_model = ClozeModel.load_from_checkpoint(
+            checkpoint_path=checkpoint_callback.best_model_path, tokenizer=datamodule.tokenizer)
+    else:
+        lm_model = ClozeModel(args, tokenizer=datamodule.tokenizer)
 
     doc_encoder_dir = path.join(args.model_dirpath, "huggingface")
     if not path.exists(doc_encoder_dir):

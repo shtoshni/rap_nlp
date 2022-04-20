@@ -11,7 +11,8 @@ from cloze_task.data_utils.constants import MENT_START, MENT_END, COREF_START, C
 class ClozeTaskDataModule(LightningDataModule):
     def __init__(self,  data_dir=None, train_batch_size=16, batch_size=1,
                  max_token_limit=1000, num_workers=1,
-                 train_size=1e6, val_size=500, model_size='base',
+                 train_size=1e6, val_size=500, test_size=None, final_eval_val=False,
+                 #model_size='base',
                  ment_prob=0.0, oracle=False,  chain_rep='canonical',
                  coref_len=None, max_mention_len=None,
                  include_singletons=False, denote_mentions=False, reduce_redundancy=False,
@@ -23,6 +24,8 @@ class ClozeTaskDataModule(LightningDataModule):
 
         self.train_size = train_size
         self.val_size = val_size
+        self.test_size = test_size
+        self.final_eval_val = final_eval_val
 
         # Additional model settings
         self.ment_prob = ment_prob
@@ -88,6 +91,8 @@ class ClozeTaskDataModule(LightningDataModule):
             max_instances = self.train_size
         elif split == 'val':
             max_instances = self.val_size
+        elif split == 'test' and self.test_size is not None:
+            max_instances = self.test_size
 
         return LambadaDataset(
             tokenizer=self.orig_tokenizer, file_path=path.join(self.data_dir, f"{split}.jsonlines"),
@@ -123,7 +128,8 @@ class ClozeTaskDataModule(LightningDataModule):
 
     def test_dataloader(self):
         test_loader = torch.utils.data.DataLoader(
-            self.dataset_dict['test'], batch_size=self.batch_size, num_workers=self.num_workers,
+            self.dataset_dict['test'] if not self.final_eval_val else self.dataset_dict['val'],
+            batch_size=self.batch_size, num_workers=self.num_workers,
             shuffle=False, collate_fn=self.inference_data_collator, drop_last=False,
             pin_memory=True)
 

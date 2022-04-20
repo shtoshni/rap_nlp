@@ -45,6 +45,9 @@ def get_polynomial_decay_schedule_with_warmup(
         raise ValueError(f"lr_end ({lr_end}) must be be smaller than initial lr ({lr_init})")
 
     def lr_lambda(current_step: int):
+        if num_training_steps == 0:
+            return 0.0
+
         if current_step < num_warmup_steps:
             return float(current_step) / float(max(1, num_warmup_steps))
         elif current_step > num_training_steps:

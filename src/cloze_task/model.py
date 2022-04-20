@@ -170,11 +170,12 @@ class ClozeModel(LightningModule):
         return output
 
     def test_step(self, batch, batch_ids, split="test"):
+        # split = "val" if self.final_eval_val else "test"
         output = self(batch, split=split)
         return output
 
     def validation_epoch_end(self, outputs, split='val'):
-        if path.exists(self.model_dirpath):
+        if len(outputs) >= 10:
             log_file = path.join(self.model_dirpath, f"{split}_log.jsonl")
         else:
             log_file = "/dev/null"
@@ -189,10 +190,10 @@ class ClozeModel(LightningModule):
             perp = perp_num/perp_den
             perp = math.exp(perp)
 
-            print(total_corr, total, cloze_acc)
-            print(f"Perplexity: {perp:.2f}")
-
             if len(outputs) >= 10:
+                print(total_corr, total, cloze_acc)
+                print(f"Perplexity: {perp:.2f}")
+
                 # Avoid logging validation checks
                 self.log(f'{split}_acc', cloze_acc)
                 self.log(f'{split}_perp', perp)
@@ -203,6 +204,7 @@ class ClozeModel(LightningModule):
         print(f"Logs at: {log_file}")
 
     def test_epoch_end(self, outputs):
-        self.validation_epoch_end(outputs, split='test')
+        # split = "val" if self.final_eval_val else "test"
+        self.validation_epoch_end(outputs, split="test")
 
 
