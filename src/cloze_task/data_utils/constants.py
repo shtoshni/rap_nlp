@@ -13,6 +13,6 @@ TOKENS = {
 PAREN_TOKENS = {
     'MENT_START': '[',
     'MENT_END': ']',
-    'COREF_START': '(',
-    'COREF_END': ')'
+    'COREF_START': '[',
+    'COREF_END': ']'
 }
