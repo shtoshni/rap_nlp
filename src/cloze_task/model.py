@@ -208,6 +208,7 @@ class ClozeModel(LightningModule):
 
     def test_epoch_end(self, outputs):
         split = "val" if self.final_eval_val else "test"
+        print(f"Test epoch end: Split {split}")
         self.validation_epoch_end(outputs, split=split)
 
 
